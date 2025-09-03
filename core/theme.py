@@ -5,50 +5,176 @@
 import tkinter as tk
 from tkinter import ttk
 
-# =============================
-# Zentrales Theme-Definition
-# -> Diese Werte kann eine KI dynamisch anpassen (siehe set_theme_vars)
-# =============================
-THEME_VARS = {
-    # Brand Blau - Exakt nach Bertrandt Referenz
+# =========================
+# Bertrandt Blue/Grey/White Theme (Apple-inspiriert)
+# mit LOW-COLOR Modus (klare Ränder, starke Kontraste, keine feinen Tints)
+# =========================
+
+THEME = {
     "brand_700": "#0b5ea8",
-    "brand_600": "#146ec6", 
+    "brand_600": "#146ec6",  # primär
     "brand_500": "#1b7fe3",
-    "brand_400": "#4e9ef0",
+    "brand_050": "#e6f0ff",  # nur im Light-Mode als Hover, NICHT in low-color
 
-    # Dark-Neutrals - Exakt nach Bertrandt Referenz
-    "bg":        "#0e1116",  # App-Hintergrund
-    "panel":     "#0f141b",  # Paneel (Cards/Nav)
-    "panel_2":   "#131a22",  # leichte Absetzung (Glas-Fake)
-    "text":      "#e9edf2",  # Haupttext
-    "muted":     "#a5b0bf",  # Gedämpfter Text
-    "border":    "#1e2632",  # Rahmen
+    # iOS-artige Graustufen
+    "g000": "#ffffff",
+    "g025": "#f7f7f8",
+    "g050": "#f2f2f7",
+    "g100": "#e5e5ea",
+    "g200": "#d1d1d6",
+    "g300": "#c7c7cc",
+    "g400": "#aeaeb2",
+    "g500": "#8e8e93",
+    "g600": "#636366",
+    "g700": "#3a3a3c",
+    "g800": "#1c1c1e",
+}
 
-    # Effekte - Exakt nach Bertrandt Referenz
-    "elev_outline": "#223041",   # Erhöhte Elemente Rand
-    "elev_fill":    "#111821",   # Erhöhte Elemente Füllung
+# Aktueller Theme-Modus
+CURRENT_THEME = "light"  # "dark" oder "light"
+LOW_COLOR_MODE = False   # Low-Color Modus für bessere Sichtbarkeit
 
-    # Radii/Abstände - Nach Bertrandt Referenz
-    "radius": 16,        # Eckenradius
-    "pad": 12,           # Innenabstand
+def build_palette(mode="light", low_color=False):
+    """Erstellt die Farbpalette basierend auf Theme-Modus"""
+    g = THEME
+    if mode == "dark":
+        bg               = g["g800"]
+        surface          = "#2c2c2e"
+        surface2         = "#232325"
+        text             = g["g000"]
+        muted            = g["g400"]
+        accent           = g["brand_500"]
+        accent_contrast  = g["g000"]
+        hover            = "#20324a" if not low_color else surface2
+        border           = "#3c3c41"
+        border_strong    = "#57575c"
+        ring             = g["brand_600"]
+    else:
+        bg               = g["g025"]
+        surface          = g["g000"]
+        surface2         = g["g050"]
+        text             = "#000000"
+        muted            = g["g600"]
+        accent           = g["brand_600"]
+        accent_contrast  = g["g000"]
+        hover            = g["brand_050"] if not low_color else surface2
+        border           = g["g200"]
+        border_strong    = g["g400"]
+        ring             = g["brand_500"]
 
-    # Typografie - Nach Bertrandt Referenz
+    # LOW-COLOR: keine weichen Schatten, stärkere Ränder
+    if low_color:
+        hover = surface2  # kein Farb-Hover, nur Tonwert
+    
+    return {
+        "bg": bg, "surface": surface, "surface2": surface2, "text": text, "muted": muted,
+        "accent": accent, "accent_contrast": accent_contrast, "hover": hover,
+        "border": border, "border_strong": border_strong, "ring": ring,
+    }
+
+# Aktuelle Palette (wird durch toggle_theme() aktualisiert)
+CURRENT_PALETTE = build_palette(CURRENT_THEME, LOW_COLOR_MODE)
+
+# Legacy-Kompatibilität: THEME_VARS für bestehenden Code
+THEME_VARS = {
+    "brand_700": THEME["brand_700"],
+    "brand_600": THEME["brand_600"],
+    "brand_500": THEME["brand_500"],
+    "brand_400": THEME["brand_050"],
+    
+    "bg": CURRENT_PALETTE["bg"],
+    "panel": CURRENT_PALETTE["surface"],
+    "panel_2": CURRENT_PALETTE["surface2"],
+    "text": CURRENT_PALETTE["text"],
+    "muted": CURRENT_PALETTE["muted"],
+    "border": CURRENT_PALETTE["border_strong"],
+    
+    "elev_outline": CURRENT_PALETTE["border"],
+    "elev_fill": CURRENT_PALETTE["surface2"],
+    
+    "radius": 16,
+    "pad": 12,
+    
     "font_family": "Segoe UI",
     "size_body": 10,
     "size_h1": 18,
     "size_h2": 14,
-
-    # Fokus-Ring - Nach Bertrandt Referenz
-    "ring": "#1b7fe340",  # Ring mit 40 Alpha
+    
+    "ring": CURRENT_PALETTE["ring"],
 }
 
 def set_theme_vars(**overrides):
     """
     Werte im THEME_VARS-Dict live überschreiben.
     Beispiel: set_theme_vars(brand_600="#1a6ee0")
-    Danach apply_bertrandt_dark_theme(root, reapply=True) aufrufen.
+    Danach apply_bertrandt_theme(root, reapply=True) aufrufen.
     """
     THEME_VARS.update(overrides)
+
+def toggle_theme():
+    """
+    Wechselt zwischen Dark und Light Theme.
+    Gibt den neuen Theme-Namen zurück.
+    """
+    global CURRENT_THEME, CURRENT_PALETTE, THEME_VARS
+    
+    # Theme wechseln
+    CURRENT_THEME = "dark" if CURRENT_THEME == "light" else "light"
+    
+    # Neue Palette erstellen
+    CURRENT_PALETTE = build_palette(CURRENT_THEME, LOW_COLOR_MODE)
+    
+    # THEME_VARS für Legacy-Kompatibilität aktualisieren
+    THEME_VARS.update({
+        "bg": CURRENT_PALETTE["bg"],
+        "panel": CURRENT_PALETTE["surface"],
+        "panel_2": CURRENT_PALETTE["surface2"],
+        "text": CURRENT_PALETTE["text"],
+        "muted": CURRENT_PALETTE["muted"],
+        "border": CURRENT_PALETTE["border_strong"],
+        "elev_outline": CURRENT_PALETTE["border"],
+        "elev_fill": CURRENT_PALETTE["surface2"],
+        "ring": CURRENT_PALETTE["ring"],
+    })
+    
+    return CURRENT_THEME
+
+def toggle_low_color():
+    """
+    Wechselt den Low-Color Modus für bessere Sichtbarkeit.
+    """
+    global LOW_COLOR_MODE, CURRENT_PALETTE, THEME_VARS
+    
+    LOW_COLOR_MODE = not LOW_COLOR_MODE
+    
+    # Palette neu erstellen
+    CURRENT_PALETTE = build_palette(CURRENT_THEME, LOW_COLOR_MODE)
+    
+    # THEME_VARS aktualisieren
+    THEME_VARS.update({
+        "bg": CURRENT_PALETTE["bg"],
+        "panel": CURRENT_PALETTE["surface"],
+        "panel_2": CURRENT_PALETTE["surface2"],
+        "text": CURRENT_PALETTE["text"],
+        "muted": CURRENT_PALETTE["muted"],
+        "border": CURRENT_PALETTE["border_strong"],
+        "elev_outline": CURRENT_PALETTE["border"],
+        "elev_fill": CURRENT_PALETTE["surface2"],
+        "ring": CURRENT_PALETTE["ring"],
+    })
+    
+    return LOW_COLOR_MODE
+
+def get_current_theme():
+    """Gibt den aktuellen Theme-Namen zurück"""
+    return CURRENT_THEME
+
+def get_logo_filename():
+    """Gibt den passenden Logo-Dateinamen für das aktuelle Theme zurück"""
+    if CURRENT_THEME == "dark":
+        return "Bertrandt_logo_weis.png"  # Weißes Logo für Dark Theme
+    else:
+        return "Bertrandt_logo_schwarz.png"  # Schwarzes Logo für Light Theme
 
 def _mix(c1, c2, t=0.5):
     """Einfache Farbinterpolation (hex -> hex)."""
@@ -60,15 +186,16 @@ def _mix(c1, c2, t=0.5):
     b = int(b1 + (b2 - b1) * t)
     return rgb_to_hex(r,g,b)
 
-def apply_bertrandt_dark_theme(root: tk.Tk, reapply: bool=False):
+def apply_bertrandt_theme(root: tk.Tk, reapply: bool=False):
     """
-    Wendet das Bertrandt-Dark-Theme auf ttk an.
-    - Setzt Grundfarben
-    - Erstellt Stile: TFrame/TLabel/TButton/TCheckbutton/TEntry/TProgressbar
-    - Fügt 'glass' Varianten hinzu (…Glass)
+    Wendet das neue Bertrandt Theme mit Apple-inspiriertem Design an.
+    Unterstützt Light/Dark Mode und Low-Color Modus.
     """
+    # Aktuelle Palette holen
+    pal = CURRENT_PALETTE
+    
     # Grund-Setup
-    root.configure(bg=THEME_VARS["bg"])
+    root.configure(bg=pal["bg"])
     root.option_add("*Font", (THEME_VARS["font_family"], THEME_VARS["size_body"]))
     style = ttk.Style()
 
@@ -78,175 +205,229 @@ def apply_bertrandt_dark_theme(root: tk.Tk, reapply: bool=False):
     except tk.TclError:
         pass
 
-    # Farb-Shortcuts
-    BG      = THEME_VARS["bg"]
-    PANEL   = THEME_VARS["panel"]
-    PANEL2  = THEME_VARS["panel_2"]
-    TEXT    = THEME_VARS["text"]
-    MUTED   = THEME_VARS["muted"]
-    BORDER  = THEME_VARS["border"]
-    BRAND   = THEME_VARS["brand_600"]
-    BRAND_H = THEME_VARS["brand_400"]  # Hover
+    # Farb-Shortcuts für bessere Lesbarkeit
+    BG      = pal["bg"]
+    SURFACE = pal["surface"]
+    SURFACE2 = pal["surface2"]
+    TEXT    = pal["text"]
+    MUTED   = pal["muted"]
+    BORDER  = pal["border_strong"]
+    ACCENT  = pal["accent"]
+    ACCENT_CONTRAST = pal["accent_contrast"]
+    HOVER   = pal["hover"]
+    RING    = pal["ring"]
 
     # -------------------------
-    # Allgemeine Widget-Defaults
+    # Frames / Panes
     # -------------------------
-    # Frames
     style.configure("TFrame", background=BG, borderwidth=0)
-    # "Glass"-Frame (Panel-Look)
+    
+    # Card-Frame (Apple-inspiriert mit klaren Rändern)
+    style.configure(
+        "Card.TFrame", 
+        background=SURFACE, 
+        borderwidth=1,
+        relief="solid"
+    )
+    style.map("Card.TFrame", background=[("active", SURFACE)])
+    
+    # Glass-Frame (Legacy-Kompatibilität)
     style.configure(
         "Glass.TFrame",
-        background=PANEL,
-        bordercolor=THEME_VARS["elev_outline"],
-        lightcolor=PANEL2,
-        darkcolor=PANEL,
-        relief="flat",
+        background=SURFACE,
+        bordercolor=BORDER,
+        lightcolor=SURFACE2,
+        darkcolor=SURFACE,
+        relief="solid",
         borderwidth=1
     )
 
+    # -------------------------
     # Labels
-    style.configure("TLabel", background=BG, foreground=TEXT)
-    style.configure("Muted.TLabel", foreground=MUTED, background=BG)
-    style.configure("H1.TLabel", background=BG, foreground=TEXT, font=(THEME_VARS["font_family"], THEME_VARS["size_h1"], "bold"))
-    style.configure("H2.TLabel", background=BG, foreground=TEXT, font=(THEME_VARS["font_family"], THEME_VARS["size_h2"], "bold"))
+    # -------------------------
+    style.configure("TLabel", background=SURFACE, foreground=TEXT)
+    style.configure("Muted.TLabel", background=SURFACE, foreground=MUTED)
+    style.configure("H1.TLabel", 
+                   background=SURFACE, 
+                   foreground=TEXT, 
+                   font=(THEME_VARS["font_family"], THEME_VARS["size_h1"], "bold"))
+    style.configure("H2.TLabel", 
+                   background=SURFACE, 
+                   foreground=TEXT, 
+                   font=(THEME_VARS["font_family"], THEME_VARS["size_h2"], "bold"))
 
+    # -------------------------
     # Buttons
-    # Ghost-Button (Rahmen)
-    style.configure(
-        "Ghost.TButton",
-        background=_mix(PANEL, BG, 0.5),
+    # -------------------------
+    # Standard Button (sekundär)
+    style.configure("TButton",
+                   background=SURFACE2,
+                   foreground=TEXT,
+                   bordercolor=BORDER,
+                   focusthickness=2,
+                   focuscolor=RING,
+                   padding=(10, 6))
+    style.map("TButton",
+             background=[("active", HOVER)],
+             relief=[("pressed", "sunken"), ("!pressed", "raised")])
+
+    # Primary Button (Bertrandt Blau)
+    style.configure("Primary.TButton",
+                   background=ACCENT,
+                   foreground=ACCENT_CONTRAST,
+                   bordercolor=ACCENT,
+                   focusthickness=3,
+                   focuscolor=RING,
+                   padding=(10, 6))
+    style.map("Primary.TButton",
+             background=[("active", ACCENT)])  # Gleich, kein Tint in low-color
+
+    # Ghost Button (Legacy-Kompatibilität)
+    style.configure("Ghost.TButton",
+                   background=SURFACE2,
+                   foreground=TEXT,
+                   bordercolor=BORDER,
+                   focusthickness=2,
+                   focuscolor=RING,
+                   padding=(10, 6),
+                   relief="flat")
+    style.map("Ghost.TButton",
+             background=[("active", HOVER)])
+
+    # Glass Button (Legacy-Kompatibilität)
+    style.configure("Glass.TButton",
+                   background=SURFACE2,
+                   foreground=TEXT,
+                   bordercolor=BORDER,
+                   padding=(10, 6),
+                   relief="flat")
+    style.map("Glass.TButton",
+             background=[("active", HOVER)])
+
+    # -------------------------
+    # Entries / Combobox
+    # -------------------------
+    entry_common = dict(
+        fieldbackground=SURFACE2,
         foreground=TEXT,
         bordercolor=BORDER,
-        focusthickness=2,
-        focustcolor=THEME_VARS["ring"],
-        padding=(12, 8),
-        relief="flat"
+        lightcolor=RING,  # Focus-Outline
+        darkcolor=RING,
+        insertcolor=TEXT,
+        padding=6
     )
-    style.map(
-        "Ghost.TButton",
-        background=[("active", _mix(PANEL, BRAND, 0.1))],
-        bordercolor=[("active", _mix(BORDER, BRAND, 0.2))]
-    )
+    for elem in ("TEntry", "TCombobox"):
+        style.configure(elem, **entry_common)
+        style.map(elem, 
+                 fieldbackground=[("focus", SURFACE2)],
+                 bordercolor=[("focus", RING)])
 
-    # Solid-Primary
-    style.configure(
-        "Primary.TButton",
-        background=BRAND,
-        foreground="#ffffff",
-        bordercolor=_mix(BRAND, "#000000", 0.3),
-        padding=(12, 8),
-        relief="flat"
-    )
-    style.map(
-        "Primary.TButton",
-        background=[("active", BRAND_H)],
-        foreground=[("disabled", _mix("#ffffff", "#888888", 0.6))],
-    )
-
-    # Glass-Button (transluzent simuliert)
-    style.configure(
-        "Glass.TButton",
-        background=_mix(PANEL, "#ffffff", 0.06),
-        foreground=TEXT,
-        bordercolor=_mix(BORDER, "#ffffff", 0.2),
-        padding=(12, 8),
-        relief="flat"
-    )
-    style.map(
-        "Glass.TButton",
-        background=[("active", _mix(PANEL, BRAND, 0.15))]
-    )
-
-    # Entry
-    style.configure(
-        "TEntry",
-        fieldbackground=_mix(PANEL, "#000000", 0.0),
-        background=_mix(PANEL, "#000000", 0.0),
-        foreground=TEXT,
-        bordercolor=BORDER,
-        lightcolor=_mix(BORDER, "#ffffff", 0.1),
-        darkcolor=_mix(BORDER, "#000000", 0.2),
-        padding=8,
-        relief="flat"
-    )
-
+    # -------------------------
     # Checkbutton / Radiobutton
+    # -------------------------
     style.configure("TCheckbutton", background=BG, foreground=TEXT)
     style.configure("TRadiobutton", background=BG, foreground=TEXT)
 
+    # -------------------------
     # Progressbar
+    # -------------------------
     style.configure(
         "Glass.Horizontal.TProgressbar",
-        background=_mix(BRAND, BRAND_H, 0.5),
-        troughcolor=_mix(PANEL, BG, 0.3),
+        background=ACCENT,
+        troughcolor=SURFACE2,
         bordercolor=BORDER,
-        lightcolor=BRAND,
-        darkcolor=BRAND_H,
+        lightcolor=ACCENT,
+        darkcolor=ACCENT,
         thickness=8
     )
+    
+    # Standard Progressbar
+    style.configure(
+        "TProgressbar",
+        background=ACCENT,
+        troughcolor=SURFACE2,
+        bordercolor=BORDER
+    )
 
+    # -------------------------
     # Notebook (Tabs)
-    style.configure(
-        "TNotebook",
-        background=BG,
-        borderwidth=0
-    )
-    style.configure(
-        "TNotebook.Tab",
-        background=_mix(PANEL, BG, 0.4),
-        foreground=TEXT,
-        bordercolor=BORDER,
-        padding=(12, 8)
-    )
-    style.map(
-        "TNotebook.Tab",
-        background=[("selected", PANEL2), ("active", _mix(PANEL, BRAND, 0.12))],
-        foreground=[("selected", TEXT)]
-    )
+    # -------------------------
+    style.configure("TNotebook", background=BG, borderwidth=0)
+    style.configure("TNotebook.Tab",
+                   background=SURFACE2,
+                   foreground=TEXT,
+                   bordercolor=BORDER,
+                   padding=(12, 8))
+    style.map("TNotebook.Tab",
+             background=[("selected", SURFACE), ("active", HOVER)],
+             foreground=[("selected", TEXT)])
 
+    # -------------------------
     # Separators
+    # -------------------------
     style.configure("TSeparator", background=BORDER)
+    
+    # -------------------------
+    # Menus
+    # -------------------------
+    root.option_add("*Menu*background", SURFACE)
+    root.option_add("*Menu*foreground", TEXT)
+    root.option_add("*Menu*activeBackground", HOVER)
+    root.option_add("*Menu*activeForeground", TEXT)
 
-    # Hilfsfunktionen für „Cards“ (Glass-Panels) ohne echtes Rounded-Corners
-    # -> Wir liefern eine einfache Card-Factory mit Canvas-Hintergrund.
+    # -------------------------
+    # Global padding
+    # -------------------------
+    root.option_add("*TButton.padding", (10, 6))
+    root.option_add("*TEntry.padding", 6)
+
+    # -------------------------
+    # Card Factory (Apple-inspiriert)
+    # -------------------------
     def make_glass_card(parent, padding=THEME_VARS["pad"]):
         """
-        Gibt ein Frame zurück, das optisch einer 'glass' Card ähnelt:
-        - Canvas als Hintergrundfläche
-        - Innenliegendes Frame (ttk.Frame, Style=Glass.TFrame) für Inhalte
+        Erstellt eine moderne Card im Apple-Stil:
+        - Klare Ränder, keine Schatten
+        - Optimiert für Low-Color Modus
         """
         outer = ttk.Frame(parent, style="TFrame")
-        # Hintergrund-Layer
-        cv = tk.Canvas(outer, bg=BG, highlightthickness=0, bd=0, height=1)  # Höhe wird via bind angepasst
+        
+        # Canvas für Hintergrund-Effekt
+        cv = tk.Canvas(outer, bg=BG, highlightthickness=0, bd=0, height=1)
         cv.grid(row=0, column=0, sticky="nsew")
         outer.grid_rowconfigure(0, weight=1)
         outer.grid_columnconfigure(0, weight=1)
 
-        inner = ttk.Frame(outer, style="Glass.TFrame", padding=padding)
+        # Inner Frame mit Card-Style
+        inner = ttk.Frame(outer, style="Card.TFrame", padding=padding)
         inner.place(relx=0, rely=0, relwidth=1, relheight=1)
 
-        # softer „Schein“ durch dünne Linie
+        # Klarer Rahmen für bessere Sichtbarkeit
         def _redraw(_evt=None):
             cv.delete("all")
             w = outer.winfo_width()
             h = outer.winfo_height()
-            if w < 2 or h < 2: return
-            # simulierte Kontur
+            if w < 2 or h < 2: 
+                return
+            
+            # Klarer Außenrahmen
             cv.create_rectangle(
                 1, 1, w-2, h-2,
-                outline=THEME_VARS["elev_outline"],
+                outline=BORDER,
                 width=1
             )
-            # leichte Innenfläche („Glas“)
+            
+            # Card-Hintergrund
             cv.create_rectangle(
                 2, 2, w-3, h-3,
                 outline="",
-                fill=_mix(PANEL, "#ffffff", 0.04)
+                fill=SURFACE
             )
+        
         outer.bind("<Configure>", _redraw)
         return outer, inner
 
-    # Füge Fabrik an das Style-Objekt an, damit Apps sie ohne Import-Kollision nutzen können
+    # Füge Fabrik an das Style-Objekt an
     style._bertrandt_make_glass_card = make_glass_card
 
     # -------------------------
@@ -381,61 +562,62 @@ class ThemeManager:
         self.setup_themes()
     
     def setup_themes(self):
-        """Initialisiert das Bertrandt Dark Theme"""
-        # Konvertiere THEME_VARS zu unserem Format für Kompatibilität
-        self.dark_theme = {
+        """Initialisiert die Theme-Kompatibilität für das neue System"""
+        # Themes werden jetzt dynamisch über get_colors() generiert
+        # Keine statischen Theme-Definitionen mehr nötig
+        pass
+    
+    def get_colors(self):
+        """Gibt das aktuelle Farbschema zurück"""
+        # Verwende die neue Palette
+        pal = CURRENT_PALETTE
+        
+        return {
             # Brand Colors
-            'brand_700': THEME_VARS["brand_700"],
-            'brand_600': THEME_VARS["brand_600"],
-            'brand_500': THEME_VARS["brand_500"],
-            'brand_400': THEME_VARS["brand_400"],
+            'brand_700': THEME["brand_700"],
+            'brand_600': THEME["brand_600"],
+            'brand_500': THEME["brand_500"],
+            'brand_400': THEME["brand_050"],
 
             # Backgrounds
-            'background_primary': THEME_VARS["bg"],
-            'background_secondary': THEME_VARS["panel"],
-            'background_tertiary': THEME_VARS["panel_2"],
-            'background_hover': _mix(THEME_VARS["panel"], THEME_VARS["brand_600"], 0.1),
-            'background_accent': THEME_VARS["brand_600"],
+            'background_primary': pal["bg"],
+            'background_secondary': pal["surface"],
+            'background_tertiary': pal["surface2"],
+            'background_hover': pal["hover"],
+            'background_accent': pal["accent"],
 
             # Text
-            'text_primary': THEME_VARS["text"],
-            'text_secondary': THEME_VARS["muted"],
-            'text_tertiary': _mix(THEME_VARS["muted"], THEME_VARS["bg"], 0.5),
-            'text_on_accent': '#ffffff',
+            'text_primary': pal["text"],
+            'text_secondary': pal["muted"],
+            'text_tertiary': pal["muted"],
+            'text_on_accent': pal["accent_contrast"],
 
             # Accents
-            'accent_primary': THEME_VARS["brand_600"],
-            'accent_secondary': THEME_VARS["brand_500"],
-            'accent_tertiary': THEME_VARS["brand_400"],
+            'accent_primary': pal["accent"],
+            'accent_secondary': THEME["brand_500"],
+            'accent_tertiary': THEME["brand_050"],
             'accent_warning': '#ff9f0a',
             'accent_destructive': '#ff453a',
             'accent_success': '#30d158',
 
             # Borders
-            'border_light': THEME_VARS["border"],
-            'border_medium': THEME_VARS["elev_outline"],
-            'border_accent': THEME_VARS["brand_600"],
+            'border_light': pal["border"],
+            'border_medium': pal["border_strong"],
+            'border_accent': pal["accent"],
 
-            # Glass Effects (simuliert für Tkinter)
-            'glass_bg': THEME_VARS["panel_2"],
-            'glass_border': THEME_VARS["elev_outline"],
-            'glass_highlight': _mix(THEME_VARS["panel"], "#ffffff", 0.08),
-            'glass_shadow_light': THEME_VARS["elev_fill"],
-            'glass_shadow_medium': _mix(THEME_VARS["elev_fill"], "#000000", 0.3),
-            'glass_shadow_strong': _mix(THEME_VARS["elev_fill"], "#000000", 0.5),
+            # Glass Effects
+            'glass_bg': pal["surface2"],
+            'glass_border': pal["border"],
+            'glass_highlight': pal["surface"],
+            'glass_shadow_light': pal["surface2"],
+            'glass_shadow_medium': pal["surface2"],
+            'glass_shadow_strong': pal["surface2"],
 
             # Legacy
-            'bertrandt_blue': THEME_VARS["brand_600"],
+            'bertrandt_blue': pal["accent"],
             'bertrandt_orange': '#ff6600',
-            'glass_effect': THEME_VARS["panel_2"],
+            'glass_effect': pal["surface2"],
         }
-        
-        # Light theme = Dark theme (nur Dark Mode)
-        self.light_theme = self.dark_theme.copy()
-    
-    def get_colors(self):
-        """Gibt das aktuelle Farbschema zurück (immer Dark Theme)"""
-        return self.dark_theme
     
     def get_fonts(self, window_width, window_height):
         """Gibt responsive Schriftarten für 24" 16:9 optimiert zurück (Bertrandt Theme)"""
@@ -616,12 +798,17 @@ class ThemeManager:
         }
     
     def apply_theme_to_root(self, root: tk.Tk):
-        """Wendet das komplette Bertrandt Dark Theme auf die Root-Anwendung an"""
+        """Wendet das komplette Bertrandt Theme auf die Root-Anwendung an"""
         # Direkt das Bertrandt Theme anwenden
-        apply_bertrandt_dark_theme(root, reapply=True)
+        apply_bertrandt_theme(root, reapply=True)
         
         # TTK Style zurückgeben
         return ttk.Style()
+    
+    def toggle_theme(self):
+        """Wechselt zwischen Dark und Light Mode"""
+        new_theme = toggle_theme()
+        return new_theme
     
     def make_glass_card(self, parent, padding=None):
         """Erstellt eine Glass-Card"""
@@ -635,8 +822,11 @@ class ThemeManager:
 # Globale Theme-Instanz
 theme_manager = ThemeManager()
 
+# Backward compatibility alias
+apply_bertrandt_dark_theme = apply_bertrandt_theme
+
 # Direkter Start (Demo)
 if __name__ == "__main__":
     root = tk.Tk()
-    apply_bertrandt_dark_theme(root)
+    apply_bertrandt_theme(root)
     root.mainloop()

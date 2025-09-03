@@ -78,21 +78,32 @@ class ContentManager:
             logger.info(f"Content-Verzeichnis erstellt: {self.content_dir}")
     
     def load_all_slides(self):
-        """Lädt alle Slides aus dem Content-Verzeichnis"""
+        """Lädt alle Slides aus dem Content-Verzeichnis und erstellt Standard-Slides"""
         try:
             # Suche nach page_* Ordnern
+            existing_slides = set()
             for item in os.listdir(self.content_dir):
                 item_path = os.path.join(self.content_dir, item)
                 if os.path.isdir(item_path) and item.startswith('page_'):
                     try:
                         slide_id = int(item.split('_')[1])
                         self.load_slide(slide_id)
+                        existing_slides.add(slide_id)
                     except (ValueError, IndexError):
                         logger.warning(f"Ungültiger Slide-Ordner: {item}")
             
-            logger.info(f"{len(self.slides)} Slides geladen")
+            # Erstelle fehlende Standard-Slides (1-10)
+            for slide_id in range(1, 11):
+                if slide_id not in existing_slides:
+                    self.create_default_slide(slide_id)
+            
+            logger.info(f"{len(self.slides)} Slides geladen (davon {10 - len(existing_slides)} neu erstellt)")
         except Exception as e:
             logger.error(f"Fehler beim Laden der Slides: {e}")
+            # Fallback: Erstelle alle Standard-Slides
+            for slide_id in range(1, 11):
+                if slide_id not in self.slides:
+                    self.create_default_slide(slide_id)
     
     def load_slide(self, slide_id):
         """Lädt eine spezifische Slide"""
@@ -124,17 +135,71 @@ class ContentManager:
             self.create_default_slide(slide_id)
     
     def create_default_slide(self, slide_id):
-        """Erstellt eine Standard-Slide"""
+        """Erstellt eine Standard-Slide mit vorgefertigtem Inhalt"""
         slide_dir = os.path.join(self.content_dir, f"page_{slide_id}")
         if not os.path.exists(slide_dir):
             os.makedirs(slide_dir)
         
+        # Vordefinierte Slide-Inhalte - Alle im Design von Folie 6
+        slide_contents = {
+            1: {
+                "title": "BumbleB - Das automatisierte Shuttle",
+                "content": "Innovative autonome Mobilität:\n\n• Vollständig elektrischer Antrieb\n• Autonome Navigation\n• Umweltfreundliche Technologie\n• Sichere und zuverlässige Fahrt\n• Moderne Benutzeroberfläche\n• Komfortable Innenausstattung\n• Zukunftsweisende Mobilität"
+            },
+            2: {
+                "title": "Technische Spezifikationen",
+                "content": "Modernste Technik im Detail:\n\n• Kapazität: 8-12 Passagiere\n• Geschwindigkeit: bis 25 km/h\n• Reichweite: 150 km pro Ladung\n• Ladezeit: 2 Stunden Schnellladung\n• Sensoren: LiDAR, Kameras, Radar\n• Betriebssystem: Linux-basiert\n• Konnektivität: 5G, WiFi, Bluetooth"
+            },
+            3: {
+                "title": "Einsatzgebiete und Vorteile",
+                "content": "Vielseitige Anwendungsmöglichkeiten:\n\n• Städtischer öffentlicher Nahverkehr\n• Campus-Transport für Universitäten\n• Flughäfen und Bahnhöfe\n• Touristische Routen\n• Last-Mile-Delivery Service\n• Reduzierte CO2-Emissionen\n• Kosteneffiziente Mobilität"
+            },
+            4: {
+                "title": "Sicherheitssysteme",
+                "content": "Höchste Sicherheitsstandards:\n\n• 360° LiDAR-Überwachungssystem\n• Redundante Bremssysteme\n• Notfall-Stopp-Funktion\n• Intelligente Kollisionsvermeidung\n• Wettererkennungssystem\n• Fernüberwachung rund um die Uhr\n• Automatische Systemdiagnose"
+            },
+            5: {
+                "title": "Nachhaltigkeit & Umwelt",
+                "content": "Grüne Mobilität der Zukunft:\n\n• 100% elektrischer Antrieb\n• Null lokale Emissionen\n• Energieeffiziente Routenplanung\n• Recycelbare Materialien\n• Solarpanel-Integration möglich\n• CO2-Reduktion um 85%\n• Deutliche Lärmreduzierung"
+            },
+            6: {
+                "title": "Benutzerfreundlichkeit",
+                "content": "Einfache Bedienung für alle:\n\n• Intuitive Touch-Bedienung\n• Barrierefreier Zugang\n• Mehrsprachige Benutzeroberfläche\n• Mobile App-Integration\n• Echtzeit-Informationen\n• Komfortable Sitze\n• Klimaanlage"
+            },
+            7: {
+                "title": "Technologie-Innovation",
+                "content": "Zukunftstechnologie heute:\n\n• KI-basierte Routenoptimierung\n• Machine Learning Algorithmen\n• Edge Computing Integration\n• 5G-Konnektivität\n• Cloud-basierte Services\n• Predictive Maintenance\n• Over-the-Air Software Updates"
+            },
+            8: {
+                "title": "Wirtschaftlichkeit",
+                "content": "Intelligente Investition:\n\n• Niedrige Betriebskosten\n• Minimaler Wartungsaufwand\n• Hohe Verfügbarkeit über 95%\n• Skalierbare Flottengröße\n• ROI innerhalb von 3 Jahren\n• Staatliche Förderungen verfügbar\n• Flexible Leasing-Optionen"
+            },
+            9: {
+                "title": "Zukunftsausblick",
+                "content": "Vision der Mobilität:\n\n• Integration in Smart Cities\n• Vernetzung mit anderen Verkehrsmitteln\n• Autonome Fahrzeug-Flotten\n• Personalisierte Transportlösungen\n• Erweiterte KI-Funktionen\n• Globale Expansion geplant\n• Kontinuierliche Innovation"
+            },
+            10: {
+                "title": "Kontakt & Nächste Schritte",
+                "content": "Starten Sie mit BumbleB:\n\n• Kostenlose Beratung vereinbaren\n• Pilotprojekt initiieren\n• Individuelle Lösungen entwickeln\n• Finanzierungsoptionen besprechen\n• Demo-Fahrt organisieren\n• Technische Integration planen\n• Langfristige Partnerschaft aufbauen"
+            }
+        }
+        
+        # Standard-Inhalt basierend auf Slide-ID
+        slide_content = slide_contents.get(slide_id, {
+            "title": f"Folie {slide_id}",
+            "content": f"Inhalt für Folie {slide_id}\n\n• Punkt 1\n• Punkt 2\n• Punkt 3"
+        })
+        
         default_config = {
-            "title": f"Slide {slide_id}",
-            "content": f"Inhalt für Slide {slide_id}",
+            "title": slide_content["title"],
+            "content": slide_content["content"],
             "layout": "text",
             "background_color": "#FFFFFF",
-            "text_color": "#000000"
+            "text_color": "#000000",
+            "slide_width": 1920,
+            "slide_height": 1080,
+            "canvas_elements": [],
+            "creator_version": "1.0"
         }
         
         config_file = os.path.join(slide_dir, "config.json")
@@ -150,7 +215,7 @@ class ContentManager:
         )
         
         self.slides[slide_id] = slide
-        logger.info(f"Standard-Slide {slide_id} erstellt")
+        logger.info(f"Standard-Slide {slide_id} erstellt: {slide_content['title']}")
     
     def save_slide(self, slide_id):
         """Speichert eine Slide"""

@@ -48,50 +48,51 @@ class HomeTab:
         c1_outer, c1 = self.main_window.make_glass_card(self.container, padding=card_padding)
         c1_outer.grid(row=0, column=0, sticky="nsew", padx=grid_spacing, pady=grid_spacing, ipadx=20, ipady=20)
         
-        # Größere Überschriften und Texte
-        ttk.Label(c1, text="System Status", style="H1.TLabel").pack(anchor="w", pady=(0, 8))
-        ttk.Label(c1, text="Hardware-Verbindungen", style="H2.TLabel").pack(anchor="w", pady=(0, 15))
+        # Größere Überschriften und Texte - volle Breite
+        ttk.Label(c1, text="System Status", style="H1.TLabel").pack(fill="x", pady=(0, 8))
+        ttk.Label(c1, text="Hardware-Verbindungen", style="H2.TLabel").pack(fill="x", pady=(0, 15))
         
-        # Noch größere Progressbar
-        pb = ttk.Progressbar(c1, style="Glass.Horizontal.TProgressbar", length=450, mode="determinate")
+        # Noch größere Progressbar - volle Breite
+        pb = ttk.Progressbar(c1, style="Glass.Horizontal.TProgressbar", mode="determinate")
         pb["value"] = 85
-        pb.pack(anchor="w", pady=(15, 20))
+        pb.pack(fill="x", pady=(15, 20))
         
-        # Action Buttons - größer und besser spaced
+        # Action Buttons - volle Breite
         btnrow = ttk.Frame(c1, style="TFrame")
-        btnrow.pack(anchor="w", pady=(15, 0))
+        btnrow.pack(fill="x", pady=(15, 0))
+        btnrow.columnconfigure((0, 1), weight=1)
         ttk.Button(btnrow, text="Details", style="Glass.TButton", 
-                  command=lambda: self.show_toast("System-Details angezeigt")).pack(side="left", padx=(0, 15))
+                  command=lambda: self.show_toast("System-Details angezeigt")).grid(row=0, column=0, sticky="ew", padx=(0, 8))
         ttk.Button(btnrow, text="Demo Starten", style="Primary.TButton", 
-                  command=lambda: self.main_window.switch_tab('demo')).pack(side="left")
+                  command=lambda: self.main_window.switch_tab('demo')).grid(row=0, column=1, sticky="ew", padx=(8, 0))
         
         # Card 2: Module (Spalte 1, Zeile 0) - Optimierte Größe
         c2_outer, c2 = self.main_window.make_glass_card(self.container, padding=card_padding)
         c2_outer.grid(row=0, column=1, sticky="nsew", padx=grid_spacing, pady=grid_spacing, ipadx=10, ipady=10)
         
-        ttk.Label(c2, text="Module", style="H2.TLabel").pack(anchor="w")
-        ttk.Label(c2, text="3 aktive • 1 Update", style="Muted.TLabel").pack(anchor="w", pady=(0, 10))
+        ttk.Label(c2, text="Module", style="H2.TLabel").pack(fill="x")
+        ttk.Label(c2, text="3 aktive • 1 Update", style="Muted.TLabel").pack(fill="x", pady=(0, 10))
         
-        # Module Liste - besserer Abstand
+        # Module Liste - volle Breite
         modules = ["ESP32 Receiver – aktiv", "Arduino GIGA – aktiv", "GUI Engine – aktiv", "Demo Service – bereit"]
         for txt in modules:
-            ttk.Label(c2, text="• " + txt).pack(anchor="w", pady=4)
+            ttk.Label(c2, text="• " + txt).pack(fill="x", pady=4)
         
         # Card 3: Quick Actions (Spalte 2, Zeile 0) - Optimierte Größe
         c3_outer, c3 = self.main_window.make_glass_card(self.container, padding=card_padding)
         c3_outer.grid(row=0, column=2, sticky="nsew", padx=grid_spacing, pady=grid_spacing, ipadx=10, ipady=10)
         
-        ttk.Label(c3, text="Quick Actions", style="H2.TLabel").pack(anchor="w")
-        ttk.Label(c3, text="Schnellzugriffe", style="Muted.TLabel").pack(anchor="w", pady=(0, 15))
+        ttk.Label(c3, text="Quick Actions", style="H2.TLabel").pack(fill="x")
+        ttk.Label(c3, text="Schnellzugriffe", style="Muted.TLabel").pack(fill="x", pady=(0, 15))
         
-        # Quick Action Buttons - bessere Verteilung
+        # Quick Action Buttons - volle Breite
         action_row1 = ttk.Frame(c3, style="TFrame")
-        action_row1.pack(anchor="w", pady=(10, 8))
+        action_row1.pack(fill="x", pady=(10, 8))
         ttk.Button(action_row1, text="Creator", style="Glass.TButton", 
                   command=lambda: self.main_window.switch_tab('creator')).pack(fill="x")
         
         action_row2 = ttk.Frame(c3, style="TFrame")
-        action_row2.pack(anchor="w", pady=(8, 0))
+        action_row2.pack(fill="x", pady=(8, 0))
         ttk.Button(action_row2, text="Präsentation", style="Primary.TButton", 
                   command=lambda: self.main_window.switch_tab('presentation')).pack(fill="x")
         
@@ -99,8 +100,8 @@ class HomeTab:
         c4_outer, c4 = self.main_window.make_glass_card(self.container, padding=card_padding)
         c4_outer.grid(row=1, column=0, columnspan=2, sticky="nsew", padx=grid_spacing, pady=grid_spacing, ipadx=15, ipady=15)
         
-        ttk.Label(c4, text="Timeline", style="H2.TLabel").pack(anchor="w")
-        ttk.Label(c4, text="Letzte Ereignisse", style="Muted.TLabel").pack(anchor="w", pady=(0, 15))
+        ttk.Label(c4, text="Timeline", style="H2.TLabel").pack(fill="x")
+        ttk.Label(c4, text="Letzte Ereignisse", style="Muted.TLabel").pack(fill="x", pady=(0, 15))
         
         # Timeline Events - besserer Abstand und Layout
         events = [
@@ -124,17 +125,32 @@ class HomeTab:
         c5_outer, c5 = self.main_window.make_glass_card(self.container, padding=card_padding)
         c5_outer.grid(row=1, column=2, sticky="nsew", padx=grid_spacing, pady=grid_spacing, ipadx=10, ipady=15)
         
-        ttk.Label(c5, text="Hardware", style="H2.TLabel").pack(anchor="w")
-        ttk.Label(c5, text="Verbindungsstatus", style="Muted.TLabel").pack(anchor="w", pady=(0, 15))
+        ttk.Label(c5, text="Hardware", style="H2.TLabel").pack(fill="x")
+        ttk.Label(c5, text="Verbindungsstatus", style="Muted.TLabel").pack(fill="x", pady=(0, 15))
         
-        # Hardware Status - größere Progressbar
-        pb2 = ttk.Progressbar(c5, style="Glass.Horizontal.TProgressbar", length=280, mode="determinate")
+        # Hardware Status - volle Breite Progressbar
+        pb2 = ttk.Progressbar(c5, style="Glass.Horizontal.TProgressbar", mode="determinate")
         pb2["value"] = 92
-        pb2.pack(anchor="w", pady=(10, 15))
+        pb2.pack(fill="x", pady=(10, 15))
         
-        # Hardware Details
-        ttk.Label(c5, text="ESP32 & GIGA verbunden", style="TLabel").pack(anchor="w", pady=(0, 8))
-        ttk.Label(c5, text="Latenz: 12ms", style="Muted.TLabel").pack(anchor="w")
+        # Hardware Details - volle Breite
+        ttk.Label(c5, text="ESP32 & GIGA verbunden", style="TLabel").pack(fill="x", pady=(0, 8))
+        ttk.Label(c5, text="Latenz: 12ms", style="Muted.TLabel").pack(fill="x")
+    
+    def refresh_theme(self):
+        """Aktualisiert das Theme für den Home-Tab"""
+        from core.theme import THEME_VARS
+        
+        # Container-Hintergrund aktualisieren (nur für tk.Frame, nicht ttk.Frame)
+        if hasattr(self, 'container'):
+            try:
+                # Prüfen ob es ein tk.Frame ist (hat bg-Option)
+                if hasattr(self.container, 'configure') and 'bg' in self.container.configure():
+                    self.container.configure(bg=THEME_VARS["bg"])
+            except:
+                pass  # ttk.Frame unterstützt kein bg
+        
+        logger.debug("Home-Tab Theme aktualisiert")
     
     def show_toast(self, message):
         """Zeigt eine Toast-Nachricht"""

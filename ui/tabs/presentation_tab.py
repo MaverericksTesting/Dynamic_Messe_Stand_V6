@@ -314,6 +314,109 @@ class PresentationTab:
         # Einfache Implementierung - in einer echten App würde man die Buttons direkt aktualisieren
         pass
     
+    def refresh_theme(self):
+        """Aktualisiert das Theme für den Presentation-Tab"""
+        from core.theme import THEME_VARS, theme_manager
+        
+        # Neue Farben holen
+        colors = theme_manager.get_colors()
+        
+        # Container-Hintergrund aktualisieren
+        if hasattr(self, 'container'):
+            try:
+                if hasattr(self.container, 'configure') and 'bg' in self.container.configure():
+                    self.container.configure(bg=THEME_VARS["bg"])
+            except:
+                pass
+        
+        # Alle Widgets mit theme-aware Farben aktualisieren
+        self._update_all_widget_colors(self.container, colors)
+        
+        logger.debug("Presentation-Tab Theme aktualisiert")
+    
+    def _update_all_widget_colors(self, widget, colors):
+        """Aktualisiert alle Widget-Farben rekursiv basierend auf dem aktuellen Theme"""
+        try:
+            # Frame-Widgets
+            if isinstance(widget, tk.Frame) and not isinstance(widget, ttk.Frame):
+                widget.configure(bg=colors['background_secondary'])
+            
+            # Label-Widgets
+            elif isinstance(widget, tk.Label):
+                widget.configure(
+                    bg=colors['background_secondary'],
+                    fg=colors['text_primary']
+                )
+            
+            # Button-Widgets
+            elif isinstance(widget, tk.Button):
+                button_text = widget.cget('text')
+                if any(keyword in button_text.lower() for keyword in ['start', 'starten', 'play']):
+                    widget.configure(bg=colors['accent_primary'], fg=colors['text_on_accent'])
+                elif any(keyword in button_text.lower() for keyword in ['stop', 'stoppen', 'end']):
+                    widget.configure(bg=colors['accent_warning'], fg=colors['text_on_accent'])
+                elif any(keyword in button_text.lower() for keyword in ['next', 'weiter', '→']):
+                    widget.configure(bg=colors['accent_secondary'], fg=colors['text_on_accent'])
+                elif any(keyword in button_text.lower() for keyword in ['prev', 'zurück', '←']):
+                    widget.configure(bg=colors['accent_secondary'], fg=colors['text_on_accent'])
+                else:
+                    widget.configure(bg=colors['background_hover'], fg=colors['text_primary'])
+            
+            # Text-Widgets
+            elif isinstance(widget, tk.Text):
+                widget.configure(
+                    bg=colors['background_secondary'],
+                    fg=colors['text_primary'],
+                    insertbackground=colors['text_primary']
+                )
+            
+            # Entry-Widgets
+            elif isinstance(widget, tk.Entry):
+                widget.configure(
+                    bg=colors['background_secondary'],
+                    fg=colors['text_primary'],
+                    insertbackground=colors['text_primary']
+                )
+            
+            # Scrollbar-Widgets
+            elif isinstance(widget, tk.Scrollbar):
+                widget.configure(bg=colors['background_tertiary'])
+            
+            # Canvas-Widgets
+            elif isinstance(widget, tk.Canvas):
+                widget.configure(bg=colors['background_secondary'])
+            
+            # Scale-Widgets
+            elif isinstance(widget, tk.Scale):
+                widget.configure(
+                    bg=colors['background_secondary'],
+                    fg=colors['text_primary'],
+                    troughcolor=colors['background_tertiary'],
+                    activebackground=colors['accent_primary']
+                )
+            
+            # Rekursiv alle Child-Widgets durchgehen
+            for child in widget.winfo_children():
+                self._update_all_widget_colors(child, colors)
+                
+        except Exception as e:
+            # Ignoriere Fehler bei Widgets die keine Farb-Optionen haben
+            pass
+    
+    def _update_frame_backgrounds(self, widget, bg_color):
+        """Hilfsfunktion: Aktualisiert Hintergründe aller Frame-Widgets rekursiv"""
+        try:
+            # Nur tk.Frame unterstützt bg-Option, ttk.Frame nicht
+            if isinstance(widget, tk.Frame) and not isinstance(widget, ttk.Frame):
+                widget.configure(bg=bg_color)
+            
+            # Alle Child-Widgets durchgehen
+            for child in widget.winfo_children():
+                self._update_frame_backgrounds(child, bg_color)
+        except Exception as e:
+            # Ignoriere Fehler bei Widgets die keine bg-Option haben
+            pass
+    
     def show(self):
         """Zeigt den Tab"""
         if not self.visible:

@@ -28,7 +28,7 @@ class HeaderComponent(ttk.Frame):
         spacing = theme_manager.get_spacing()
         
         # Header-Höhe
-        header_height = 70
+        header_height = 74
         self.configure(height=header_height)
         
         # Grid-Konfiguration
@@ -224,11 +224,51 @@ class HeaderComponent(ttk.Frame):
         return btn_frame
     
     def setup_info_area(self):
-        """Erstellt den Info-Bereich"""
+        """Erstellt den Info-Bereich mit Präsentations-Funktionen"""
         colors = theme_manager.get_colors()
         fonts = self.main_window.fonts
+        spacing = theme_manager.get_spacing()
         
-        # Status-Indikator
+        # Präsentations-Aktionen (links im Info-Bereich)
+        presentation_frame = tk.Frame(self.info_frame, bg=colors['background_secondary'])
+        presentation_frame.pack(side='left', padx=(0, spacing['lg']))
+        
+        # Speichern-Dropdown
+        save_frame = tk.Frame(presentation_frame, bg=colors['background_secondary'])
+        save_frame.pack(side='left', padx=(0, spacing['sm']))
+        
+        save_btn = tk.Button(
+            save_frame,
+            text="💾 Speichern",
+            font=fonts['button'],
+            bg=colors['accent_primary'],
+            fg='white',
+            relief='flat',
+            bd=0,
+            padx=spacing['md'],
+            pady=spacing['xs'],
+            cursor='hand2',
+            command=self.show_save_menu
+        )
+        save_btn.pack()
+        
+        # Laden-Button
+        load_btn = tk.Button(
+            presentation_frame,
+            text="📂 Laden",
+            font=fonts['button'],
+            bg=colors['accent_secondary'],
+            fg='white',
+            relief='flat',
+            bd=0,
+            padx=spacing['md'],
+            pady=spacing['xs'],
+            cursor='hand2',
+            command=self.load_presentation
+        )
+        load_btn.pack(side='left', padx=(0, spacing['sm']))
+        
+        # Status-Indikator (rechts)
         status_frame = tk.Frame(self.info_frame, bg=colors['background_secondary'])
         status_frame.pack(side='right')
         
@@ -242,7 +282,7 @@ class HeaderComponent(ttk.Frame):
         )
         self.status_indicator.pack(side='top')
         
-        # Zeit/Datum (optional)
+        # Zeit/Datum
         import datetime
         time_label = tk.Label(
             status_frame,
@@ -252,6 +292,86 @@ class HeaderComponent(ttk.Frame):
             bg=colors['background_secondary']
         )
         time_label.pack(side='top')
+    
+    def show_save_menu(self):
+        """Zeigt das Speicher-Menü"""
+        from tkinter import messagebox
+        
+        # Einfaches Auswahl-Dialog
+        result = messagebox.askyesnocancel(
+            "Präsentation speichern",
+            "In welchem Format möchten Sie die Präsentation speichern?\n\n"
+            "Ja = JSON-Format (strukturiert, maschinenlesbar)\n"
+            "Nein = YAML-Format (menschenlesbar, übersichtlich)\n"
+            "Abbrechen = Vorgang abbrechen"
+        )
+        
+        if result is True:
+            self.save_presentation_json()
+        elif result is False:
+            self.save_presentation_yaml()
+        # None = Abbrechen, nichts tun
+    
+    def save_presentation_json(self):
+        """Speichert die Präsentation als JSON"""
+        try:
+            from models.presentation import presentation_manager
+            filename = presentation_manager.export_presentation_as_json()
+            if filename:
+                logger.info(f"Präsentation als JSON gespeichert: {filename}")
+                # Status kurz aktualisieren
+                self.show_save_success("JSON")
+        except Exception as e:
+            logger.error(f"Fehler beim JSON-Export: {e}")
+            from tkinter import messagebox
+            messagebox.showerror("Speicher-Fehler", f"Präsentation konnte nicht gespeichert werden:\n{e}")
+    
+    def save_presentation_yaml(self):
+        """Speichert die Präsentation als YAML"""
+        try:
+            from models.presentation import presentation_manager
+            filename = presentation_manager.export_presentation_as_yaml()
+            if filename:
+                logger.info(f"Präsentation als YAML gespeichert: {filename}")
+                # Status kurz aktualisieren
+                self.show_save_success("YAML")
+        except Exception as e:
+            logger.error(f"Fehler beim YAML-Export: {e}")
+            from tkinter import messagebox
+            messagebox.showerror("Speicher-Fehler", f"Präsentation konnte nicht gespeichert werden:\n{e}")
+    
+    def load_presentation(self):
+        """Lädt eine Präsentation"""
+        try:
+            from models.presentation import presentation_manager
+            success = presentation_manager.load_presentation_from_file()
+            if success:
+                logger.info("Präsentation erfolgreich geladen")
+                # Status kurz aktualisieren
+                self.show_load_success()
+                
+                # Alle Tabs über neue Daten informieren
+                if hasattr(self.main_window, 'refresh_all_tabs'):
+                    self.main_window.refresh_all_tabs()
+                
+        except Exception as e:
+            logger.error(f"Fehler beim Laden der Präsentation: {e}")
+            from tkinter import messagebox
+            messagebox.showerror("Lade-Fehler", f"Präsentation konnte nicht geladen werden:\n{e}")
+    
+    def show_save_success(self, format_type):
+        """Zeigt Speicher-Erfolg im Status"""
+        original_text = self.status_indicator.cget('text')
+        self.status_indicator.configure(text=f"💾 {format_type} gespeichert", fg=theme_manager.get_colors()['accent_primary'])
+        # Nach 3 Sekunden zurücksetzen
+        self.main_window.root.after(3000, lambda: self.status_indicator.configure(text=original_text, fg=theme_manager.get_colors()['text_secondary']))
+    
+    def show_load_success(self):
+        """Zeigt Lade-Erfolg im Status"""
+        original_text = self.status_indicator.cget('text')
+        self.status_indicator.configure(text="📂 Präsentation geladen", fg=theme_manager.get_colors()['accent_primary'])
+        # Nach 3 Sekunden zurücksetzen
+        self.main_window.root.after(3000, lambda: self.status_indicator.configure(text=original_text, fg=theme_manager.get_colors()['text_secondary']))
     
     def update_active_tab(self, tab_id):
         """Aktualisiert die aktive Tab-Anzeige mit sanften Übergängen"""

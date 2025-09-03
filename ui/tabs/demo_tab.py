@@ -10,6 +10,7 @@ from core.theme import theme_manager, THEME_VARS, _mix
 from core.logger import logger
 from services.demo import demo_service
 from models.content import content_manager
+from ui.components.slide_renderer import SlideRenderer
 
 class DemoTab:
     """Demo-Tab für automatische Präsentationen"""
@@ -436,7 +437,7 @@ class DemoTab:
         self.create_control_buttons(display_frame)
     
     def create_slide_content_view(self):
-        """Erstellt die detaillierte Slide-Inhalts-Anzeige"""
+        """Erstellt die Canvas-basierte Slide-Anzeige (wie im Creator)"""
         colors = theme_manager.get_colors()
         fonts = self.main_window.fonts
         spacing = theme_manager.get_spacing()
@@ -445,65 +446,121 @@ class DemoTab:
         for widget in self.slide_frame.winfo_children():
             widget.destroy()
         
-        # Slide-Titel-Bereich mit Theme-Spacing
-        title_area = tk.Frame(self.slide_frame, bg=colors['background_secondary'])
-        title_area.pack(fill='x', padx=spacing['xl'], pady=(spacing['xl'], spacing['lg']))
+        # Canvas für 1:1 Darstellung wie im Creator
+        canvas_container = tk.Frame(self.slide_frame, bg=colors['background_secondary'])
+        canvas_container.pack(fill='both', expand=True, padx=spacing['lg'], pady=spacing['lg'])
         
-        self.slide_title_display = tk.Label(
-            title_area,
-            text="BumbleB - Das automatisierte Shuttle",
-            font=fonts['display'],
-            fg=colors['accent_primary'],  # Theme-konform: Bertrandt Blue
-            bg=colors['background_secondary'],
-            justify='left'
-        )
-        self.slide_title_display.pack(anchor='w')
-        
-        # Trennlinie mit Theme-Spacing
-        separator = tk.Frame(title_area, bg=colors['accent_secondary'], height=4)  # Theme-konform: Bertrandt Orange
-        separator.pack(fill='x', pady=(spacing['sm'], 0))
-        
-        # Slide-Content-Bereich mit Theme-Spacing
-        content_area = tk.Frame(self.slide_frame, bg=colors['background_secondary'])
-        content_area.pack(fill='both', expand=True, padx=spacing['xl'], pady=(spacing['lg'], spacing['xl']))
-        
-        # Scrollbarer Text-Bereich
-        text_frame = tk.Frame(content_area, bg=colors['background_secondary'])
-        text_frame.pack(fill='both', expand=True)
-        
-        text_scrollbar = tk.Scrollbar(text_frame, bg=colors['background_tertiary'])
-        text_scrollbar.pack(side='right', fill='y')
-        
-        self.slide_content_display = tk.Text(
-            text_frame,
-            font=fonts['body'],
-            bg=colors['background_secondary'],
-            fg=colors['text_primary'],
-            wrap='word',
+        # Slide-Canvas erstellen (moderner Stil)
+        self.demo_slide_canvas = tk.Canvas(
+            canvas_container,
+            bg='#E8E8E8',  # Konsistent mit Creator
             relief='flat',
             bd=0,
-            state='disabled',
-            yscrollcommand=text_scrollbar.set,
-            insertbackground=colors['text_primary']
+            highlightthickness=0
         )
-        self.slide_content_display.pack(side='left', fill='both', expand=True)
-        text_scrollbar.config(command=self.slide_content_display.yview)
+        self.demo_slide_canvas.pack(fill='both', expand=True)
         
-        # Layout-Info (unten)
-        layout_info = tk.Frame(self.slide_frame, bg=colors['background_tertiary'])
-        layout_info.pack(fill='x', side='bottom')
+        # Canvas-Größe überwachen und Folie entsprechend skalieren
+        self.demo_slide_canvas.bind('<Configure>', self.on_demo_canvas_resize)
         
-        self.layout_indicator = tk.Label(
-            layout_info,
-            text="Layout: Text",
+        # Slide-Dimensionen (identisch zum Creator)
+        self.demo_slide_width = 1920
+        self.demo_slide_height = 1080
+        self.demo_scale_factor = 1.0
+        self.demo_offset_x = 0
+        self.demo_offset_y = 0
+        
+        # Info-Bereich (unten)
+        info_frame = tk.Frame(self.slide_frame, bg=colors['background_tertiary'])
+        info_frame.pack(fill='x', side='bottom')
+        
+        self.slide_info_display = tk.Label(
+            info_frame,
+            text="Slide-Vorschau - Creator-Layout wird 1:1 angezeigt",
             font=fonts['caption'],
             fg=colors['text_secondary'],
             bg=colors['background_tertiary']
         )
-        self.layout_indicator.pack(side='left', padx=spacing['sm'], pady=spacing['xxs'])
+        self.slide_info_display.pack(side='left', padx=spacing['sm'], pady=spacing['xxs'])
+    
+    def on_demo_canvas_resize(self, event):
+        """Optimale Skalierung für Demo-Canvas (identisch zum Creator)"""
+        canvas_width = event.width
+        canvas_height = event.height
         
-        # Lade aktuelle Slide (nach vollständiger Initialisierung)
-        # self.update_slide_display(1) - wird später aufgerufen
+        # Minimale Größe sicherstellen
+        if canvas_width < 100 or canvas_height < 100:
+            return
+        
+        # Skalierungsfaktor berechnen - Folie komplett sichtbar
+        scale_x = (canvas_width - 40) / self.demo_slide_width
+        scale_y = (canvas_height - 40) / self.demo_slide_height
+        
+        # Kleineren Faktor verwenden, damit komplette Folie sichtbar bleibt
+        self.demo_scale_factor = min(scale_x, scale_y)
+        
+        # Minimale Skalierung sicherstellen
+        if self.demo_scale_factor < 0.1:
+            self.demo_scale_factor = 0.1
+        
+        # Neue skalierte Dimensionen
+        scaled_width = self.demo_slide_width * self.demo_scale_factor
+        scaled_height = self.demo_slide_height * self.demo_scale_factor
+        
+        # Canvas-Inhalt perfekt zentrieren
+        self.demo_offset_x = (canvas_width - scaled_width) / 2
+        self.demo_offset_y = (canvas_height - scaled_height) / 2
+        
+        # Alle bestehenden Elemente neu skalieren
+        self.rescale_demo_elements()
+    
+    def rescale_demo_elements(self):
+        """Skaliert alle Demo-Canvas-Elemente bei Größenänderungen"""
+        try:
+            # Alle Canvas-Items durchgehen
+            for item in self.demo_slide_canvas.find_all():
+                tags = self.demo_slide_canvas.gettags(item)
+                
+                # Canvas-Widgets (Text, Bilder, etc.) neu positionieren
+                item_type = self.demo_slide_canvas.type(item)
+                if item_type == 'window':
+                    coords = self.demo_slide_canvas.coords(item)
+                    if len(coords) >= 2:
+                        # Relative Position aus Tags holen (falls gespeichert)
+                        rel_x = float(tags[1]) if len(tags) > 1 and tags[1].replace('.', '').replace('-', '').isdigit() else 0
+                        rel_y = float(tags[2]) if len(tags) > 2 and tags[2].replace('.', '').replace('-', '').isdigit() else 0
+                        
+                        # Neue absolute Position berechnen
+                        new_x = self.demo_offset_x + (rel_x * self.demo_scale_factor)
+                        new_y = self.demo_offset_y + (rel_y * self.demo_scale_factor)
+                        
+                        # Widget neu positionieren
+                        self.demo_slide_canvas.coords(item, new_x, new_y)
+                
+                # Canvas-Formen skalieren
+                elif item_type in ['oval', 'rectangle', 'line', 'text']:
+                    coords = self.demo_slide_canvas.coords(item)
+                    if len(coords) >= 2:
+                        # Relative Koordinaten aus Tags holen
+                        if len(tags) >= 3:
+                            try:
+                                rel_coords = [float(tag) for tag in tags[1:] if tag.replace('.', '').replace('-', '').isdigit()]
+                                if len(rel_coords) >= 2:
+                                    # Neue absolute Koordinaten
+                                    new_coords = []
+                                    for i in range(0, len(rel_coords), 2):
+                                        if i+1 < len(rel_coords):
+                                            new_x = self.demo_offset_x + (rel_coords[i] * self.demo_scale_factor)
+                                            new_y = self.demo_offset_y + (rel_coords[i+1] * self.demo_scale_factor)
+                                            new_coords.extend([new_x, new_y])
+                                    
+                                    if new_coords:
+                                        self.demo_slide_canvas.coords(item, *new_coords)
+                            except ValueError:
+                                pass  # Tags enthalten keine Koordinaten
+            
+        except Exception as e:
+            logger.error(f"Fehler beim Neu-Skalieren der Demo-Elemente: {e}")
     
     def create_control_buttons(self, parent):
         """Erstellt die Steuerungsbuttons unter der Folien-Anzeige"""
@@ -608,7 +665,7 @@ class DemoTab:
         self.hardware_status.pack(side='right', padx=spacing['md'], pady=spacing['sm'])
     
     def update_slide_display(self, slide_id):
-        """Aktualisiert die Slide-Anzeige mit komplettem Inhalt"""
+        """Aktualisiert die Slide-Anzeige mit 1:1 Creator-Layout"""
         slide = content_manager.get_slide(slide_id)
         
         if slide:
@@ -616,30 +673,437 @@ class DemoTab:
             if hasattr(self, 'current_slide_info'):
                 self.current_slide_info.configure(text=f"Folie {slide_id}: {slide.title}")
             
-            if hasattr(self, 'slide_title_display'):
-                self.slide_title_display.configure(text=slide.title)
+            # Canvas-basierte Anzeige aktualisieren
+            if hasattr(self, 'demo_slide_canvas'):
+                self.render_slide_canvas(slide)
             
-            # Content aktualisieren (falls vorhanden)
-            if hasattr(self, 'slide_content_display'):
-                self.slide_content_display.configure(state='normal')
-                self.slide_content_display.delete('1.0', tk.END)
-                self.slide_content_display.insert('1.0', slide.content)
-                self.slide_content_display.configure(state='disabled')
-            
-            # Layout-Info aktualisieren (falls vorhanden)
-            if hasattr(self, 'layout_indicator'):
-                self.layout_indicator.configure(text=f"Layout: {slide.layout}")
+            # Info aktualisieren
+            if hasattr(self, 'slide_info_display'):
+                canvas_elements = slide.config_data.get('canvas_elements', [])
+                self.slide_info_display.configure(
+                    text=f"Folie {slide_id}: {slide.title} - {len(canvas_elements)} Elemente"
+                )
             
             # Slide-Zähler aktualisieren (falls vorhanden)
             if hasattr(self, 'slide_counter'):
-                self.slide_counter.configure(text=f"{slide_id}/10")
-            
-            if hasattr(self, 'current_slide_display'):
-                self.current_slide_display.configure(text=f"{slide_id} / 10")
+                total_slides = content_manager.get_slide_count()
+                self.slide_counter.configure(text=f"{slide_id}/{total_slides}")
             
             # Thumbnail-Auswahl aktualisieren (falls vorhanden)
             if hasattr(self, 'demo_thumbnail_buttons'):
                 self.update_demo_thumbnail_selection(slide_id)
+    
+    def render_slide_canvas(self, slide):
+        """Rendert die Slide mit allen Canvas-Elementen (1:1 wie im Creator)"""
+        try:
+            # Canvas leeren
+            self.demo_slide_canvas.delete('all')
+            
+            # SCHRITT 1: Slide-Hintergrund rendern (HINTERGRUND-LAYER)
+            self.render_demo_slide_background()
+            
+            # SCHRITT 2: IMMER den Text direkt auf der Folie rendern (wie Folie 6)
+            # Das stellt sicher, dass alle Folien einheitlich dargestellt werden
+            self.render_fallback_text_content_only(slide)
+            logger.debug(f"Slide {slide.slide_id} mit Text direkt auf der Folie gerendert")
+            
+            # SCHRITT 3: Z-Order korrigieren - Alle Content-Elemente nach vorne bringen
+            self.fix_content_z_order()
+            
+        except Exception as e:
+            logger.error(f"Fehler beim Rendern der Slide: {e}")
+            # Notfall-Fallback
+            self.render_fallback_text_display(slide)
+    
+    def fix_content_z_order(self):
+        """Korrigiert die Z-Order - bringt alle Content-Elemente nach vorne"""
+        try:
+            # Alle Canvas-Items mit slide_content Tag nach vorne bringen
+            content_items = self.demo_slide_canvas.find_withtag('slide_content')
+            for item in content_items:
+                self.demo_slide_canvas.tag_raise(item)
+            
+            # Alle Window-Items (Widgets) nach vorne bringen
+            all_items = self.demo_slide_canvas.find_all()
+            for item in all_items:
+                item_type = self.demo_slide_canvas.type(item)
+                if item_type == 'window':
+                    self.demo_slide_canvas.tag_raise(item)
+            
+            logger.debug("Z-Order korrigiert - Content-Elemente sind jetzt über dem Hintergrund")
+            
+        except Exception as e:
+            logger.error(f"Fehler beim Korrigieren der Z-Order: {e}")
+    
+    def render_demo_slide_background(self):
+        """Rendert den modernen Slide-Hintergrund für Demo"""
+        # Skalierte Dimensionen berechnen
+        scaled_width = self.demo_slide_width * self.demo_scale_factor
+        scaled_height = self.demo_slide_height * self.demo_scale_factor
+        shadow_offset = max(6, int(8 * self.demo_scale_factor))
+        
+        # Moderner Schatten-Effekt (weicher) - HINTERGRUND-LAYER
+        self.demo_slide_canvas.create_rectangle(
+            self.demo_offset_x + shadow_offset, 
+            self.demo_offset_y + shadow_offset,
+            self.demo_offset_x + scaled_width + shadow_offset, 
+            self.demo_offset_y + scaled_height + shadow_offset,
+            fill='#CCCCCC',
+            outline='',
+            tags='slide_background_shadow'
+        )
+        
+        # Hauptbereich (weiß) mit modernem Rahmen - HINTERGRUND-LAYER
+        self.demo_slide_canvas.create_rectangle(
+            self.demo_offset_x, self.demo_offset_y,
+            self.demo_offset_x + scaled_width, self.demo_offset_y + scaled_height,
+            fill='#FFFFFF',
+            outline='#666666',
+            width=max(1, int(2 * self.demo_scale_factor)),
+            tags='slide_background_main'
+        )
+        
+        # Demo-spezifischer Akzent-Rahmen (Bertrandt Blau) - HINTERGRUND-LAYER
+        self.demo_slide_canvas.create_rectangle(
+            self.demo_offset_x - 2, self.demo_offset_y - 2,
+            self.demo_offset_x + scaled_width + 2, self.demo_offset_y + scaled_height + 2,
+            fill='',
+            outline='#1E88E5',  # Bertrandt Blau
+            width=max(2, int(3 * self.demo_scale_factor)),
+            tags='slide_background_border'
+        )
+        
+        # Demo-Status-Indikator (kleiner Punkt oben links) - HINTERGRUND-LAYER
+        indicator_size = max(8, int(12 * self.demo_scale_factor))
+        self.demo_slide_canvas.create_oval(
+            self.demo_offset_x + 20, self.demo_offset_y + 20,
+            self.demo_offset_x + 20 + indicator_size, self.demo_offset_y + 20 + indicator_size,
+            fill='#FF6600',  # Bertrandt Orange
+            outline='#FF6600',
+            tags='slide_background_indicator'
+        )
+    
+    def render_canvas_element(self, element_data):
+        """Rendert ein einzelnes Canvas-Element"""
+        try:
+            element_type = element_data.get('type')
+            coords = element_data.get('coords', [])
+            
+            if not coords or len(coords) < 2:
+                return
+            
+            # Koordinaten skalieren und positionieren
+            scaled_coords = []
+            for i in range(0, len(coords), 2):
+                if i+1 < len(coords):
+                    x = self.demo_offset_x + (coords[i] * self.demo_scale_factor)
+                    y = self.demo_offset_y + (coords[i+1] * self.demo_scale_factor)
+                    scaled_coords.extend([x, y])
+            
+            # Tags für Skalierung speichern
+            tags = ['element'] + [str(coord) for coord in coords]
+            
+            # Element-spezifisches Rendering
+            if element_type == 'window':
+                self.render_widget_element(element_data, scaled_coords[0], scaled_coords[1])
+            
+            elif element_type == 'text':
+                # Text-Element
+                text = element_data.get('text', 'Text')
+                font = element_data.get('font', 'Arial 12')
+                fill = element_data.get('fill', 'black')
+                
+                self.demo_slide_canvas.create_text(
+                    scaled_coords[0], scaled_coords[1],
+                    text=text,
+                    font=font,
+                    fill=fill,
+                    tags=tags
+                )
+            
+            elif element_type == 'rectangle':
+                # Rechteck
+                if len(scaled_coords) >= 4:
+                    fill = element_data.get('fill', '')
+                    outline = element_data.get('outline', 'black')
+                    width = element_data.get('width', 1)
+                    
+                    self.demo_slide_canvas.create_rectangle(
+                        scaled_coords[0], scaled_coords[1],
+                        scaled_coords[2], scaled_coords[3],
+                        fill=fill,
+                        outline=outline,
+                        width=width,
+                        tags=tags
+                    )
+            
+            elif element_type == 'oval':
+                # Kreis/Oval
+                if len(scaled_coords) >= 4:
+                    fill = element_data.get('fill', '')
+                    outline = element_data.get('outline', 'black')
+                    width = element_data.get('width', 1)
+                    
+                    self.demo_slide_canvas.create_oval(
+                        scaled_coords[0], scaled_coords[1],
+                        scaled_coords[2], scaled_coords[3],
+                        fill=fill,
+                        outline=outline,
+                        width=width,
+                        tags=tags
+                    )
+            
+            elif element_type == 'line':
+                # Linie
+                if len(scaled_coords) >= 4:
+                    fill = element_data.get('fill', 'black')
+                    width = element_data.get('width', 1)
+                    
+                    self.demo_slide_canvas.create_line(
+                        scaled_coords[0], scaled_coords[1],
+                        scaled_coords[2], scaled_coords[3],
+                        fill=fill,
+                        width=width,
+                        tags=tags
+                    )
+            
+        except Exception as e:
+            logger.error(f"Fehler beim Rendern des Canvas-Elements: {e}")
+    
+    def render_widget_element(self, element_data, x, y):
+        """Rendert ein Widget-Element (Text, Label, Frame, etc.)"""
+        try:
+            widget_type = element_data.get('widget_type', 'Label')
+            
+            if widget_type == 'Text':
+                # Text-Widget als Label darstellen
+                text = element_data.get('text', 'Text')
+                font = element_data.get('font', 'Arial 12')
+                bg = element_data.get('bg', 'white')
+                fg = element_data.get('fg', 'black')
+                width = element_data.get('width', 20)
+                height = element_data.get('height', 1)
+                
+                # Skalierte Größe
+                scaled_width = int(width * self.demo_scale_factor * 8)  # Approximation
+                scaled_height = int(height * self.demo_scale_factor * 20)  # Approximation
+                
+                text_widget = tk.Text(
+                    self.demo_slide_canvas,
+                    width=width,
+                    height=height,
+                    font=font,
+                    bg=bg,
+                    fg=fg,
+                    relief='flat',
+                    bd=1,
+                    wrap='word'
+                )
+                text_widget.insert('1.0', text)
+                text_widget.configure(state='disabled')  # Read-only in Demo
+                
+                self.demo_slide_canvas.create_window(x, y, window=text_widget, anchor='nw')
+            
+            elif widget_type == 'Label':
+                # Label-Widget
+                text = element_data.get('text', 'Label')
+                font = element_data.get('font', 'Arial 12')
+                bg = element_data.get('bg', 'white')
+                fg = element_data.get('fg', 'black')
+                
+                label_widget = tk.Label(
+                    self.demo_slide_canvas,
+                    text=text,
+                    font=font,
+                    bg=bg,
+                    fg=fg,
+                    relief='flat'
+                )
+                
+                self.demo_slide_canvas.create_window(x, y, window=label_widget, anchor='nw')
+            
+            elif widget_type == 'Frame':
+                # Frame-Widget
+                bg = element_data.get('bg', 'lightgray')
+                width = element_data.get('width', 100)
+                height = element_data.get('height', 50)
+                relief = element_data.get('relief', 'flat')
+                bd = element_data.get('bd', 1)
+                
+                frame_widget = tk.Frame(
+                    self.demo_slide_canvas,
+                    bg=bg,
+                    width=width,
+                    height=height,
+                    relief=relief,
+                    bd=bd
+                )
+                frame_widget.pack_propagate(False)
+                
+                # Child-Widgets rendern (falls vorhanden)
+                children = element_data.get('children', [])
+                for child_data in children:
+                    self.render_child_widget(frame_widget, child_data)
+                
+                self.demo_slide_canvas.create_window(x, y, window=frame_widget, anchor='nw')
+            
+        except Exception as e:
+            logger.error(f"Fehler beim Rendern des Widget-Elements: {e}")
+    
+    def render_child_widget(self, parent, child_data):
+        """Rendert Child-Widgets in einem Frame"""
+        try:
+            widget_type = child_data.get('widget_type', 'Label')
+            
+            if widget_type == 'Label':
+                text = child_data.get('text', 'Child Label')
+                font = child_data.get('font', 'Arial 10')
+                bg = child_data.get('bg', parent.cget('bg'))
+                fg = child_data.get('fg', 'black')
+                
+                child_label = tk.Label(
+                    parent,
+                    text=text,
+                    font=font,
+                    bg=bg,
+                    fg=fg
+                )
+                child_label.pack(expand=True)
+            
+        except Exception as e:
+            logger.error(f"Fehler beim Rendern des Child-Widgets: {e}")
+    
+    def render_fallback_text_display(self, slide):
+        """Moderne Text-Anzeige als Fallback - mit Hintergrund"""
+        # Erst den Slide-Hintergrund rendern
+        self.render_demo_slide_background()
+        
+        # Dann den Inhalt rendern
+        self.render_fallback_text_content_only(slide)
+    
+    def render_fallback_text_content_only(self, slide):
+        """Rendert Text direkt AUF der weißen Folie (nicht in separaten Containern)"""
+        # Titel direkt auf der Folie (innerhalb der Slide-Grenzen)
+        title_x = self.demo_offset_x + (100 * self.demo_scale_factor)  # Links mit Abstand
+        title_y = self.demo_offset_y + (80 * self.demo_scale_factor)   # Oben mit Abstand
+        
+        # Titel mit Bertrandt-Styling direkt auf der Folie
+        self.demo_slide_canvas.create_text(
+            title_x,
+            title_y,
+            text=slide.title,
+            font=('Segoe UI', int(32 * self.demo_scale_factor), 'bold'),
+            fill='#1E88E5',  # Bertrandt Blau
+            anchor='nw',
+            width=int((self.demo_slide_width - 200) * self.demo_scale_factor),
+            tags='slide_content'
+        )
+        
+        # Untertitel-Linie direkt auf der Folie
+        line_y = title_y + (60 * self.demo_scale_factor)
+        self.demo_slide_canvas.create_line(
+            title_x,
+            line_y,
+            self.demo_offset_x + (self.demo_slide_width - 100) * self.demo_scale_factor,
+            line_y,
+            fill='#FF6600',  # Bertrandt Orange
+            width=int(4 * self.demo_scale_factor),
+            tags='slide_content'
+        )
+        
+        # Content direkt auf der Folie
+        content_y = line_y + (40 * self.demo_scale_factor)
+        content_lines = slide.content.split('\n')
+        
+        for i, line in enumerate(content_lines[:8]):  # Mehr Zeilen möglich
+            if line.strip():
+                self.demo_slide_canvas.create_text(
+                    title_x,
+                    content_y + (i * 40 * self.demo_scale_factor),
+                    text=f"• {line.strip()}",
+                    font=('Segoe UI', int(18 * self.demo_scale_factor)),
+                    fill='#2C3E50',
+                    anchor='nw',
+                    width=int((self.demo_slide_width - 200) * self.demo_scale_factor),
+                    tags='slide_content'
+                )
+        
+        # Bertrandt-Branding direkt auf der Folie (unten)
+        self.add_demo_modern_branding_on_slide(slide)
+    
+    def add_demo_modern_branding_on_slide(self, slide):
+        """Fügt Bertrandt-Branding direkt AUF die Folie (innerhalb der Slide-Grenzen)"""
+        # Bertrandt-Logo/Text (unten rechts, AUF der Folie)
+        brand_x = self.demo_offset_x + (self.demo_slide_width - 200) * self.demo_scale_factor
+        brand_y = self.demo_offset_y + (self.demo_slide_height - 80) * self.demo_scale_factor
+        
+        self.demo_slide_canvas.create_text(
+            brand_x,
+            brand_y,
+            text="BERTRANDT",
+            font=('Segoe UI', int(16 * self.demo_scale_factor), 'bold'),
+            fill='#003366',
+            anchor='se',
+            tags='slide_content'
+        )
+        
+        # Folien-Nummer (unten links, AUF der Folie)
+        number_x = self.demo_offset_x + (100 * self.demo_scale_factor)
+        number_y = self.demo_offset_y + (self.demo_slide_height - 80) * self.demo_scale_factor
+        
+        self.demo_slide_canvas.create_text(
+            number_x,
+            number_y,
+            text=f"Folie {slide.slide_id}",
+            font=('Segoe UI', int(14 * self.demo_scale_factor)),
+            fill='#666666',
+            anchor='sw',
+            tags='slide_content'
+        )
+    
+    def add_demo_modern_branding(self, slide):
+        """Fügt modernes Bertrandt-Branding zur Demo-Ansicht hinzu (über dem Slide)"""
+        # Bertrandt-Logo/Text (unten rechts, über dem Slide)
+        brand_x = self.demo_offset_x + (self.demo_slide_width - 120) * self.demo_scale_factor
+        brand_y = self.demo_offset_y + (self.demo_slide_height - 80) * self.demo_scale_factor
+        
+        self.demo_slide_canvas.create_text(
+            brand_x,
+            brand_y,
+            text="BERTRANDT",
+            font=('Segoe UI', int(12 * self.demo_scale_factor), 'bold'),
+            fill='#003366',
+            anchor='se',
+            tags='slide_content'  # Über dem Slide
+        )
+        
+        # Folien-Nummer (unten links, über dem Slide)
+        number_x = self.demo_offset_x + (120 * self.demo_scale_factor)
+        number_y = self.demo_offset_y + (self.demo_slide_height - 80) * self.demo_scale_factor
+        
+        self.demo_slide_canvas.create_text(
+            number_x,
+            number_y,
+            text=f"Folie {slide.slide_id}",
+            font=('Segoe UI', int(10 * self.demo_scale_factor)),
+            fill='#666666',
+            anchor='sw',
+            tags='slide_content'  # Über dem Slide
+        )
+        
+        # Demo-Indikator (oben rechts, über dem Slide)
+        demo_x = self.demo_offset_x + (self.demo_slide_width - 120) * self.demo_scale_factor
+        demo_y = self.demo_offset_y + (80 * self.demo_scale_factor)
+        
+        self.demo_slide_canvas.create_text(
+            demo_x,
+            demo_y,
+            text="▶ DEMO",
+            font=('Segoe UI', int(11 * self.demo_scale_factor), 'bold'),
+            fill='#FF6600',  # Bertrandt Orange
+            anchor='ne',
+            tags='slide_content'  # Über dem Slide
+        )
     
     def update_demo_thumbnail_selection(self, slide_id):
         """Aktualisiert die Demo-Thumbnail-Auswahl"""
@@ -905,6 +1369,98 @@ class DemoTab:
             preview_text = f"Slide {slide_id}\nKein Inhalt verfügbar"
         
         self.preview_label.configure(text=preview_text)
+    
+    def refresh_theme(self):
+        """Aktualisiert das Theme für den Demo-Tab"""
+        from core.theme import THEME_VARS, theme_manager
+        
+        # Neue Farben holen
+        colors = theme_manager.get_colors()
+        
+        # Container-Hintergrund aktualisieren
+        if hasattr(self, 'container'):
+            try:
+                if hasattr(self.container, 'configure') and 'bg' in self.container.configure():
+                    self.container.configure(bg=THEME_VARS["bg"])
+            except:
+                pass
+        
+        # Alle Widgets mit theme-aware Farben aktualisieren
+        self._update_all_widget_colors(self.container, colors)
+        
+        logger.debug("Demo-Tab Theme aktualisiert")
+    
+    def _update_all_widget_colors(self, widget, colors):
+        """Aktualisiert alle Widget-Farben rekursiv basierend auf dem aktuellen Theme"""
+        try:
+            widget_class = widget.winfo_class()
+            
+            # Frame-Widgets
+            if isinstance(widget, tk.Frame) and not isinstance(widget, ttk.Frame):
+                # Bestimme die richtige Hintergrundfarbe basierend auf dem Widget-Kontext
+                if hasattr(widget, '_bg_type'):
+                    bg_key = widget._bg_type
+                else:
+                    # Standard-Hintergrund
+                    bg_key = 'background_secondary'
+                
+                widget.configure(bg=colors.get(bg_key, colors['background_secondary']))
+            
+            # Label-Widgets
+            elif isinstance(widget, tk.Label):
+                widget.configure(
+                    bg=colors['background_secondary'],
+                    fg=colors['text_primary']
+                )
+            
+            # Button-Widgets
+            elif isinstance(widget, tk.Button):
+                # Prüfe ob es ein spezieller Button ist
+                button_text = widget.cget('text')
+                if any(keyword in button_text.lower() for keyword in ['start', 'play', '▶']):
+                    widget.configure(bg=colors['accent_primary'], fg=colors['text_on_accent'])
+                elif any(keyword in button_text.lower() for keyword in ['stop', 'pause', '⏸']):
+                    widget.configure(bg=colors['accent_warning'], fg=colors['text_on_accent'])
+                else:
+                    widget.configure(bg=colors['background_hover'], fg=colors['text_primary'])
+            
+            # Text-Widgets
+            elif isinstance(widget, tk.Text):
+                widget.configure(
+                    bg=colors['background_secondary'],
+                    fg=colors['text_primary'],
+                    insertbackground=colors['text_primary']
+                )
+            
+            # Scrollbar-Widgets
+            elif isinstance(widget, tk.Scrollbar):
+                widget.configure(bg=colors['background_tertiary'])
+            
+            # Canvas-Widgets
+            elif isinstance(widget, tk.Canvas):
+                widget.configure(bg=colors['background_secondary'])
+            
+            # Rekursiv alle Child-Widgets durchgehen
+            for child in widget.winfo_children():
+                self._update_all_widget_colors(child, colors)
+                
+        except Exception as e:
+            # Ignoriere Fehler bei Widgets die keine Farb-Optionen haben
+            pass
+    
+    def _update_frame_backgrounds(self, widget, bg_color):
+        """Hilfsfunktion: Aktualisiert Hintergründe aller Frame-Widgets rekursiv"""
+        try:
+            # Nur tk.Frame unterstützt bg-Option, ttk.Frame nicht
+            if isinstance(widget, tk.Frame) and not isinstance(widget, ttk.Frame):
+                widget.configure(bg=bg_color)
+            
+            # Alle Child-Widgets durchgehen
+            for child in widget.winfo_children():
+                self._update_frame_backgrounds(child, bg_color)
+        except Exception as e:
+            # Ignoriere Fehler bei Widgets die keine bg-Option haben
+            pass
     
     def show(self):
         """Zeigt den Tab"""

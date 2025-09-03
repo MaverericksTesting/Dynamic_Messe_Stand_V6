@@ -181,6 +181,16 @@ class DemoService:
             'slide_duration': self.slide_duration,
             'loop_mode': self.loop_demo
         }
+    
+    def reset_to_first_slide(self):
+        """Setzt die Demo zur ersten Slide zurück"""
+        try:
+            self.current_slide = 1
+            self.total_slides = content_manager.get_slide_count()
+            self.goto_slide(1)
+            logger.info("Demo zur ersten Slide zurückgesetzt")
+        except Exception as e:
+            logger.error(f"Fehler beim Zurücksetzen zur ersten Slide: {e}")
 
 # Globale Demo-Service Instanz
 demo_service = DemoService()

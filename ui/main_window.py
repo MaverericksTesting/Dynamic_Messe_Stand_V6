@@ -327,7 +327,7 @@ class MainWindow:
         ttk.Separator(self.footer_frame).pack(fill="x", pady=6)
         self.footer_label = ttk.Label(
             self.footer_frame, 
-            text="© 2024 Bertrandt AG - Dynamic Messe Stand V4", 
+            text="© 2025 Bertrandt AG - Dynamic Messe Stand V4 - Marvin Mayer", 
             style="Muted.TLabel"
         )
         self.footer_label.pack()
@@ -380,10 +380,8 @@ class MainWindow:
         left_frame = ttk.Frame(self.navbar, style="TFrame")
         left_frame.pack(side="left")
         
-        # Brand Badge (simuliert mit Canvas)
-        badge = tk.Canvas(left_frame, width=28, height=28, bg=THEME_VARS["panel"], highlightthickness=0)
-        badge.pack(side="left", padx=(0, 10))
-        badge.create_rectangle(2, 2, 26, 26, outline="", fill=_mix(THEME_VARS["brand_600"], THEME_VARS["brand_500"], 0.5))
+        # Bertrandt Logo
+        self.load_logo(left_frame)
         
         # Title
         title_label = ttk.Label(left_frame, text="Dynamic Messe Stand V4", style="H2.TLabel")
@@ -411,6 +409,15 @@ class MainWindow:
             )
             btn.pack(side="left", padx=6)
             self.nav_buttons[tab_name] = btn
+        
+        # Theme Toggle Button
+        theme_btn = ttk.Button(
+            right_frame, 
+            text="🌙", 
+            style="Ghost.TButton",
+            command=self.toggle_theme
+        )
+        theme_btn.pack(side="left", padx=6)
         
         # Primary Action Button
         primary_btn = ttk.Button(
@@ -449,6 +456,139 @@ class MainWindow:
         )
         description.pack(anchor="w")
     
+    def load_logo(self, parent_frame):
+        """Lädt das passende Logo basierend auf dem aktuellen Theme"""
+        try:
+            from PIL import Image, ImageTk
+            from core.theme import get_logo_filename
+            import os
+            
+            # Logo-Dateiname basierend auf Theme
+            logo_filename = get_logo_filename()
+            logo_path = os.path.join(os.path.dirname(__file__), "..", "assets", logo_filename)
+            
+            # Logo laden und skalieren
+            logo_image = Image.open(logo_path)
+            
+            # Logo auf passende Größe skalieren (Höhe: 28px, Breite proportional)
+            logo_height = 28
+            logo_width = int((logo_image.width * logo_height) / logo_image.height)
+            logo_image = logo_image.resize((logo_width, logo_height), Image.Resampling.LANCZOS)
+            
+            # PhotoImage erstellen
+            self.logo_photo = ImageTk.PhotoImage(logo_image)
+            
+            # Logo Label erstellen oder aktualisieren
+            if hasattr(self, 'logo_label'):
+                self.logo_label.configure(image=self.logo_photo)
+            else:
+                self.logo_label = ttk.Label(parent_frame, image=self.logo_photo, style="TLabel")
+                self.logo_label.pack(side="left", padx=(0, 10))
+            
+        except Exception as e:
+            logger.warning(f"Bertrandt Logo konnte nicht geladen werden: {e}")
+            # Fallback: Canvas Badge
+            if not hasattr(self, 'logo_badge'):
+                self.logo_badge = tk.Canvas(parent_frame, width=28, height=28, bg=THEME_VARS["panel"], highlightthickness=0)
+                self.logo_badge.pack(side="left", padx=(0, 10))
+            
+            self.logo_badge.configure(bg=THEME_VARS["panel"])
+            self.logo_badge.delete("all")
+            self.logo_badge.create_rectangle(2, 2, 26, 26, outline="", fill=_mix(THEME_VARS["brand_600"], THEME_VARS["brand_500"], 0.5))
+
+    def toggle_theme(self):
+        """Wechselt zwischen Dark und Light Theme"""
+        from core.theme import toggle_theme, apply_bertrandt_theme
+        
+        # Theme wechseln
+        new_theme = toggle_theme()
+        
+        # Theme auf die Anwendung anwenden
+        apply_bertrandt_theme(self.root, reapply=True)
+        
+        # Styles neu anwenden
+        self.setup_styles()
+        
+        # Logo neu laden
+        if hasattr(self, 'logo_label'):
+            parent = self.logo_label.master
+            self.load_logo(parent)
+        
+        # Alle Tabs über Theme-Wechsel benachrichtigen
+        self.refresh_all_tabs()
+        
+        # Toast anzeigen
+        from core.theme import _toast
+        theme_name = "Hell" if new_theme == "light" else "Dunkel"
+        _toast(self.root, f"Theme gewechselt: {theme_name}")
+        
+        logger.info(f"Theme gewechselt zu: {new_theme}")
+    
+    def toggle_low_color(self):
+        """Wechselt den Low-Color Modus für bessere Sichtbarkeit"""
+        from core.theme import toggle_low_color, apply_bertrandt_theme, LOW_COLOR_MODE
+        
+        # Low-Color Modus wechseln
+        new_mode = toggle_low_color()
+        
+        # Theme auf die Anwendung anwenden
+        apply_bertrandt_theme(self.root, reapply=True)
+        
+        # Styles neu anwenden
+        self.setup_styles()
+        
+        # Alle Tabs über Theme-Wechsel benachrichtigen
+        self.refresh_all_tabs()
+        
+        # Toast anzeigen
+        from core.theme import _toast
+        mode_name = "Ein" if new_mode else "Aus"
+        _toast(self.root, f"Low-Color Modus: {mode_name}")
+        
+        logger.info(f"Low-Color Modus: {mode_name}")
+    
+    def refresh_all_tabs(self):
+        """Aktualisiert alle Tabs nach einem Theme-Wechsel oder Präsentations-Import"""
+        for tab_name, tab in self.tabs.items():
+            # Theme-Updates
+            if hasattr(tab, 'refresh_theme'):
+                try:
+                    tab.refresh_theme()
+                    logger.debug(f"Theme für {tab_name}-Tab aktualisiert")
+                except Exception as e:
+                    logger.warning(f"Fehler beim Theme-Update für {tab_name}: {e}")
+            
+            # Content-Updates nach Präsentations-Import
+            if hasattr(tab, 'refresh_thumbnails'):
+                try:
+                    tab.refresh_thumbnails()
+                    logger.debug(f"Thumbnails für {tab_name}-Tab aktualisiert")
+                except Exception as e:
+                    logger.warning(f"Fehler beim Thumbnail-Update für {tab_name}: {e}")
+            
+            if hasattr(tab, 'create_demo_thumbnails'):
+                try:
+                    tab.create_demo_thumbnails()
+                    logger.debug(f"Demo-Thumbnails für {tab_name}-Tab aktualisiert")
+                except Exception as e:
+                    logger.warning(f"Fehler beim Demo-Thumbnail-Update für {tab_name}: {e}")
+            
+            if hasattr(tab, 'update_slide_display'):
+                try:
+                    tab.update_slide_display(1)  # Zur ersten Slide
+                    logger.debug(f"Slide-Display für {tab_name}-Tab aktualisiert")
+                except Exception as e:
+                    logger.warning(f"Fehler beim Slide-Display-Update für {tab_name}: {e}")
+        
+        # Demo-Service zurücksetzen
+        try:
+            from services.demo import demo_service
+            if hasattr(demo_service, 'reset_to_first_slide'):
+                demo_service.reset_to_first_slide()
+            logger.debug("Demo-Service nach Präsentations-Import zurückgesetzt")
+        except Exception as e:
+            logger.warning(f"Fehler beim Demo-Service-Reset: {e}")
+
     def show_system_status(self):
         """Zeigt System-Status in einem Toast"""
         from core.theme import _toast
