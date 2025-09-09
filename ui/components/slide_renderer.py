@@ -231,6 +231,118 @@ class SlideRenderer:
             bg='#F8F9FA'
         )
         number_label.pack(side='left', padx=10, pady=5)
+    @staticmethod
+def render_slide_to_canvas(canvas, slide_data, canvas_width, canvas_height):
+    """Rendert eine Slide einheitlich für Creator und Demo"""
+    # Canvas leeren
+    canvas.delete("all")
+    
+    # EINHEITLICHE FARBEN für bessere Lesbarkeit
+    bg_color = slide_data.get('background_color', '#FFFFFF')
+    text_color = slide_data.get('text_color', '#1F1F1F')
+    title_color = '#1E88E5'   # Bertrandt Blau
+    accent_color = '#FF6600'  # Bertrandt Orange
+    
+    # Optimale Skalierung berechnen
+    margin = 40
+    scale_x = (canvas_width - margin) / 1920
+    scale_y = (canvas_height - margin) / 1080
+    scale_factor = min(scale_x, scale_y, 1.0)  # Nie größer als Original
+    
+    # Zentrierte Position
+    scaled_width = 1920 * scale_factor
+    scaled_height = 1080 * scale_factor
+    offset_x = (canvas_width - scaled_width) / 2
+    offset_y = (canvas_height - scaled_height) / 2
+    
+    # MODERNE SLIDE mit Schatten
+    shadow_offset = max(6, int(8 * scale_factor))
+    
+    # Schatten
+    canvas.create_rectangle(
+        offset_x + shadow_offset, offset_y + shadow_offset,
+        offset_x + scaled_width + shadow_offset, offset_y + scaled_height + shadow_offset,
+        fill='#D0D0D0', outline='', tags='slide_shadow'
+    )
+    
+    # Hauptbereich (weiß für gute Lesbarkeit)
+    canvas.create_rectangle(
+        offset_x, offset_y, offset_x + scaled_width, offset_y + scaled_height,
+        fill=bg_color, outline='#CCCCCC', width=2, tags='slide_background'
+    )
+    
+    # TITEL-BEREICH mit besserer Lesbarkeit
+    title_height = 100 * scale_factor
+    title_y = offset_y + (60 * scale_factor)
+    
+    title = slide_data.get('title', '')
+    if title:
+        canvas.create_text(
+            offset_x + scaled_width / 2, title_y,
+            text=title,
+            font=('Segoe UI', max(24, int(32 * scale_factor)), 'bold'),
+            fill=title_color,  # Bertrandt Blau für Titel
+            anchor='center',
+            width=scaled_width - (80 * scale_factor),
+            tags='slide_title'
+        )
+    
+    # AKZENT-LINIE unter dem Titel
+    line_y = title_y + (50 * scale_factor)
+    canvas.create_line(
+        offset_x + (60 * scale_factor), line_y,
+        offset_x + scaled_width - (60 * scale_factor), line_y,
+        fill=accent_color,  # Bertrandt Orange
+        width=max(3, int(4 * scale_factor)),
+        tags='slide_accent'
+    )
+    
+    # CONTENT-BEREICH mit besserer Formatierung
+    content = slide_data.get('content', '')
+    if content:
+        content_y_start = line_y + (40 * scale_factor)
+        content_lines = content.replace('\n\n', '\n').split('\n')
+        line_height = max(28, int(35 * scale_factor))
+        
+        for i, line in enumerate(content_lines[:12]):  # Max 12 Zeilen
+            if line.strip() and content_y_start + (i * line_height) < offset_y + scaled_height - (80 * scale_factor):
+                # Bullet-Points für bessere Struktur
+                display_text = f"• {line.strip()}" if not line.strip().startswith('•') else line.strip()
+                
+                canvas.create_text(
+                    offset_x + (80 * scale_factor),
+                    content_y_start + (i * line_height),
+                    text=display_text,
+                    font=('Segoe UI', max(12, int(16 * scale_factor))),
+                    fill=text_color,  # Dunkler Text für gute Lesbarkeit
+                    anchor='nw',
+                    width=scaled_width - (160 * scale_factor),
+                    tags='slide_content'
+                )
+    
+    # BRANDING (konsistent)
+    # Bertrandt-Logo (unten rechts)
+    canvas.create_text(
+        offset_x + scaled_width - (40 * scale_factor),
+        offset_y + scaled_height - (40 * scale_factor),
+        text="BERTRANDT",
+        font=('Segoe UI', max(10, int(14 * scale_factor)), 'bold'),
+        fill='#003366',  # Bertrandt Corporate Blau
+        anchor='se',
+        tags='slide_branding'
+    )
+    
+    # Folien-Nummer (unten links)
+    slide_number = slide_data.get('slide_number', 1)
+    canvas.create_text(
+        offset_x + (40 * scale_factor),
+        offset_y + scaled_height - (40 * scale_factor),
+        text=f"Folie {slide_number}",
+        font=('Segoe UI', max(8, int(12 * scale_factor))),
+        fill='#666666',
+        anchor='sw',
+        tags='slide_number'
+    )
     
     @staticmethod
     def get_powerpoint_colors():
