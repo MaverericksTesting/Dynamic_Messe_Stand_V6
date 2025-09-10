@@ -52,6 +52,50 @@ class HeaderComponent(ttk.Frame):
         self.info_frame.grid(row=0, column=2, sticky='nse', padx=spacing['xl'], pady=spacing['md'])
         
         self.setup_info_area()
+
+    def setup_info_area(self):
+        """Erstellt den Info-Bereich mit Präsentations-Funktionen"""
+        colors = theme_manager.get_colors()
+        fonts = self.main_window.fonts
+        spacing = theme_manager.get_spacing()
+        
+        # Präsentations-Aktionen (links im Info-Bereich)
+        presentation_frame = tk.Frame(self.info_frame, bg=colors['background_secondary'])
+        presentation_frame.pack(side='left', padx=(0, spacing['lg']))
+        
+        # NEUER Speichern-Button (prominent platziert)
+        speichern_btn = tk.Button(
+            presentation_frame,
+            text="💾 Speichern",
+            font=fonts['button'],
+            bg=colors['accent_primary'],
+            fg='white',
+            relief='flat',
+            bd=0,
+            padx=spacing['md'],
+            pady=spacing['xs'],
+            cursor='hand2',
+            command=self.main_window.on_manual_save_clicked  # Verbindung zu MainWindow
+        )
+        speichern_btn.pack(side='left', padx=(0, spacing['sm']))
+        
+        # Bestehende Buttons (Load, etc.) bleiben unverändert...
+        load_btn = tk.Button(
+            presentation_frame,
+            text="📂 Laden",
+            font=fonts['button'],
+            bg=colors['accent_secondary'],
+            fg='white',
+            relief='flat',
+            bd=0,
+            padx=spacing['md'],
+            pady=spacing['xs'],
+            cursor='hand2',
+            command=self.load_presentation
+        )
+        load_btn.pack(side='left', padx=(0, spacing['sm']))
+        
+        # Rest der ursprünglichen Methode bleibt gleich...
     
     def setup_logo(self):
         """Erstellt den Logo-Bereich mit Theme-System"""
