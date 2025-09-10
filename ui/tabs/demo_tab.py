@@ -692,28 +692,409 @@ class DemoTab:
             # Thumbnail-Auswahl aktualisieren (falls vorhanden)
             if hasattr(self, 'demo_thumbnail_buttons'):
                 self.update_demo_thumbnail_selection(slide_id)
-    
+
     def render_slide_canvas(self, slide):
-        """Rendert die Slide mit allen Canvas-Elementen (1:1 wie im Creator)"""
+        """Rendert die Slide mit IDENTISCHEM Layout wie im Creator"""
         try:
             # Canvas leeren
             self.demo_slide_canvas.delete('all')
             
-            # SCHRITT 1: Slide-Hintergrund rendern (HINTERGRUND-LAYER)
-            self.render_demo_slide_background()
-            
-            # SCHRITT 2: IMMER den Text direkt auf der Folie rendern (wie Folie 6)
-            # Das stellt sicher, dass alle Folien einheitlich dargestellt werden
-            self.render_fallback_text_content_only(slide)
-            logger.debug(f"Slide {slide.slide_id} mit Text direkt auf der Folie gerendert")
-            
-            # SCHRITT 3: Z-Order korrigieren - Alle Content-Elemente nach vorne bringen
-            self.fix_content_z_order()
+            # EXAKT DASSELBE Rendering wie im Creator verwenden
+            self.render_creator_style_slide(slide)
+            logger.debug(f"Demo: Slide {slide.slide_id} im Creator-Stil gerendert")
             
         except Exception as e:
             logger.error(f"Fehler beim Rendern der Slide: {e}")
-            # Notfall-Fallback
             self.render_fallback_text_display(slide)
+    
+    def render_creator_style_slide(self, slide):
+        """Rendert Slide EXAKT wie im Creator - identisches Aussehen"""
+        # SCHRITT 1: Slide-Hintergrund rendern (IDENTISCH zum Creator)
+        self.render_identical_slide_background()
+        
+        # SCHRITT 2: Canvas-Elemente aus config_data rendern (falls vorhanden)
+        config_data = getattr(slide, 'config_data', {})
+        canvas_elements = config_data.get('canvas_elements', [])
+        
+        if canvas_elements:
+            # Gespeicherte Canvas-Elemente rendern (READ-ONLY)
+            for element_data in canvas_elements:
+                self.render_readonly_canvas_element(element_data)
+        else:
+            # Fallback: Text direkt auf Folie (aber im Creator-Stil)
+            self.render_text_in_creator_style(slide)
+        
+        # SCHRITT 3: Z-Order korrigieren
+        self.fix_content_z_order()
+    
+    def render_identical_slide_background(self):
+        """Rendert IDENTISCHEN Slide-Hintergrund wie im Creator"""
+        # Skalierte Dimensionen berechnen (IDENTISCH zum Creator)
+        scaled_width = self.demo_slide_width * self.demo_scale_factor
+        scaled_height = self.demo_slide_height * self.demo_scale_factor
+        shadow_offset = max(8, int(12 * self.demo_scale_factor))  # Creator verwendet 12
+        
+        # Schatten-Effekt (IDENTISCH) - HINTERGRUND-LAYER
+        self.demo_slide_canvas.create_rectangle(
+            self.demo_offset_x + shadow_offset, 
+            self.demo_offset_y + shadow_offset,
+            self.demo_offset_x + scaled_width + shadow_offset, 
+            self.demo_offset_y + scaled_height + shadow_offset,
+            fill='#CCCCCC',  # IDENTISCHE Farbe wie Creator
+            outline='',
+            tags='slide_background_shadow'
+        )
+        
+        # Hauptbereich (weiß) mit IDENTISCHEM Rahmen - HINTERGRUND-LAYER
+        self.demo_slide_canvas.create_rectangle(
+            self.demo_offset_x, self.demo_offset_y,
+            self.demo_offset_x + scaled_width, self.demo_offset_y + scaled_height,
+            fill='#FFFFFF',  # IDENTISCHE Farbe
+            outline='#666666',  # IDENTISCHE Rahmenfarbe
+            width=max(1, int(2 * self.demo_scale_factor)),
+            tags='slide_background_main'
+        )
+        
+        # Rahmen für bessere Sichtbarkeit (IDENTISCH zum Creator)
+        self.demo_slide_canvas.create_rectangle(
+            self.demo_offset_x - 2, self.demo_offset_y - 2,
+            self.demo_offset_x + scaled_width + 2, self.demo_offset_y + scaled_height + 2,
+            outline='#333333',  # IDENTISCHE Farbe wie Creator
+            width=2,
+            tags='slide_background_frame'
+        )
+    
+    def render_readonly_canvas_element(self, element_data):
+        """Rendert Canvas-Element READONLY aber IDENTISCH zum Creator"""
+        try:
+            element_type = element_data.get('type')
+            coords = element_data.get('coords', [])
+            
+            if not coords or len(coords) < 2:
+                return
+            
+            # Koordinaten skalieren (IDENTISCH zum Creator)
+            scaled_coords = []
+            for i in range(0, len(coords), 2):
+                if i+1 < len(coords):
+                    x = self.demo_offset_x + (coords[i] * self.demo_scale_factor)
+                    y = self.demo_offset_y + (coords[i+1] * self.demo_scale_factor)
+                    scaled_coords.extend([x, y])
+            
+            # Widget-Elemente als READONLY Labels rendern
+            if element_type == 'window':
+                self.render_readonly_widget_element(element_data, scaled_coords[0], scaled_coords[1])
+            
+            # Canvas-Elemente IDENTISCH rendern
+            elif element_type in ['text', 'rectangle', 'oval', 'line']:
+                self.render_identical_canvas_shape(element_type, element_data, scaled_coords)
+            
+        except Exception as e:
+            logger.error(f"Fehler beim Rendern des readonly Canvas-Elements: {e}")
+    
+    def render_readonly_widget_element(self, element_data, x, y):
+        """Rendert Widget-Elements als READ-ONLY aber IDENTISCH aussehend - VOLLSTÄNDIGE METHODE"""
+        try:
+            widget_type = element_data.get('widget_type', 'Label')
+            
+            if widget_type == 'Text':
+                # Text-Widget als READ-ONLY Text-Widget (IDENTISCHES Aussehen)
+                text = element_data.get('text', 'Text')
+                font = element_data.get('font', 'Arial 12')
+                bg = element_data.get('bg', 'white')
+                fg = element_data.get('fg', 'black')
+                width = element_data.get('width', 20)
+                height = element_data.get('height', 1)
+                
+                # IDENTISCHES Text-Widget erstellen
+                text_widget = tk.Text(
+                    self.demo_slide_canvas,
+                    width=width,
+                    height=height,
+                    font=font,
+                    bg=bg,
+                    fg=fg,
+                    relief='flat',  # IDENTISCH zum Creator
+                    bd=1,           # IDENTISCH zum Creator
+                    wrap='word',
+                    state='normal'  # Temporär für Insert
+                )
+                text_widget.insert('1.0', text)
+                text_widget.configure(state='disabled')  # READ-ONLY für Demo
+                
+                self.demo_slide_canvas.create_window(x, y, window=text_widget, anchor='nw', tags='slide_content')
+                logger.debug(f"Demo: Text-Widget erstellt (READ-ONLY): '{text[:30]}...'")
+            
+            elif widget_type == 'Label':
+                # Label-Widget IDENTISCH rendern
+                text = element_data.get('text', 'Label')
+                font = element_data.get('font', 'Arial 12')
+                bg = element_data.get('bg', 'white')
+                fg = element_data.get('fg', 'black')
+                
+                label_widget = tk.Label(
+                    self.demo_slide_canvas,
+                    text=text,
+                    font=font,
+                    bg=bg,
+                    fg=fg,
+                    relief='flat'  # IDENTISCH zum Creator
+                )
+                
+                self.demo_slide_canvas.create_window(x, y, window=label_widget, anchor='nw', tags='slide_content')
+                logger.debug(f"Demo: Label-Widget erstellt: '{text}'")
+            
+            elif widget_type == 'Frame':
+                # Frame-Widget als READ-ONLY Container
+                bg = element_data.get('bg', 'lightgray')
+                width = element_data.get('width', 100)
+                height = element_data.get('height', 50)
+                relief = element_data.get('relief', 'flat')
+                bd = element_data.get('bd', 1)
+                
+                frame_widget = tk.Frame(
+                    self.demo_slide_canvas,
+                    bg=bg,
+                    width=width,
+                    height=height,
+                    relief=relief,
+                    bd=bd
+                )
+                frame_widget.pack_propagate(False)
+                
+                # Child-Widgets als READ-ONLY rendern (falls vorhanden)
+                children = element_data.get('children', [])
+                for child_data in children:
+                    self.render_readonly_child_widget(frame_widget, child_data)
+                
+                self.demo_slide_canvas.create_window(x, y, window=frame_widget, anchor='nw', tags='slide_content')
+                logger.debug(f"Demo: Frame-Widget erstellt mit {len(children)} Kindern")
+            
+            else:
+                # Unbekannter Widget-Typ: Als Label mit Info rendern
+                fallback_label = tk.Label(
+                    self.demo_slide_canvas,
+                    text=f"[{widget_type}]",
+                    font=('Arial', 10),
+                    bg='#EEEEEE',
+                    fg='#666666',
+                    relief='flat'
+                )
+                
+                self.demo_slide_canvas.create_window(x, y, window=fallback_label, anchor='nw', tags='slide_content')
+                logger.debug(f"Demo: Fallback-Widget für unbekannten Typ: {widget_type}")
+            
+        except Exception as e:
+            logger.error(f"Fehler beim Rendern des readonly Widget-Elements: {e}")
+            # Fallback: Einfaches Label mit Fehler-Info
+            try:
+                error_label = tk.Label(
+                    self.demo_slide_canvas,
+                    text="[Element-Fehler]",
+                    font=('Arial', 10),
+                    bg='#FFEEEE',
+                    fg='#CC0000',
+                    relief='flat'
+                )
+                self.demo_slide_canvas.create_window(x, y, window=error_label, anchor='nw', tags='slide_content')
+            except:
+                pass  # Selbst Fallback-Widget konnte nicht erstellt werden
+    
+    def render_readonly_child_widget(self, parent_frame, child_data):
+        """Rendert Child-Widgets in einem Frame als READ-ONLY"""
+        try:
+            widget_type = child_data.get('widget_type', 'Label')
+            
+            if widget_type == 'Label':
+                text = child_data.get('text', 'Child Label')
+                font = child_data.get('font', 'Arial 10')
+                bg = child_data.get('bg', parent_frame.cget('bg'))
+                fg = child_data.get('fg', 'black')
+                
+                child_label = tk.Label(
+                    parent_frame,
+                    text=text,
+                    font=font,
+                    bg=bg,
+                    fg=fg
+                )
+                child_label.pack(expand=True)
+                
+            elif widget_type == 'Text':
+                # Child-Text als READ-ONLY
+                text = child_data.get('text', 'Child Text')
+                font = child_data.get('font', 'Arial 10')
+                bg = child_data.get('bg', 'white')
+                fg = child_data.get('fg', 'black')
+                width = child_data.get('width', 15)
+                height = child_data.get('height', 1)
+                
+                child_text = tk.Text(
+                    parent_frame,
+                    width=width,
+                    height=height,
+                    font=font,
+                    bg=bg,
+                    fg=fg,
+                    state='normal'
+                )
+                child_text.insert('1.0', text)
+                child_text.configure(state='disabled')  # READ-ONLY
+                child_text.pack(expand=True)
+            
+            else:
+                # Unbekannter Child-Typ
+                fallback_child = tk.Label(
+                    parent_frame,
+                    text=f"[{widget_type}]",
+                    font=('Arial', 8),
+                    bg='#F0F0F0',
+                    fg='#888888'
+                )
+                fallback_child.pack(expand=True)
+                
+        except Exception as e:
+            logger.error(f"Fehler beim Rendern des Child-Widgets: {e}")
+    
+    def render_identical_canvas_shape(self, element_type, element_data, scaled_coords):
+        """Rendert Canvas-Formen IDENTISCH zum Creator"""
+        try:
+            if element_type == 'text' and len(scaled_coords) >= 2:
+                text = element_data.get('text', 'Text')
+                font = element_data.get('font', 'Arial 12')
+                fill = element_data.get('fill', 'black')
+                
+                self.demo_slide_canvas.create_text(
+                    scaled_coords[0], scaled_coords[1],
+                    text=text,
+                    font=font,
+                    fill=fill,
+                    tags='slide_content'
+                )
+            
+            elif element_type == 'rectangle' and len(scaled_coords) >= 4:
+                fill = element_data.get('fill', '')
+                outline = element_data.get('outline', 'black')
+                width = element_data.get('width', 1)
+                
+                self.demo_slide_canvas.create_rectangle(
+                    scaled_coords[0], scaled_coords[1],
+                    scaled_coords[2], scaled_coords[3],
+                    fill=fill,
+                    outline=outline,
+                    width=width,
+                    tags='slide_content'
+                )
+            
+            elif element_type == 'oval' and len(scaled_coords) >= 4:
+                fill = element_data.get('fill', '')
+                outline = element_data.get('outline', 'black')
+                width = element_data.get('width', 1)
+                
+                self.demo_slide_canvas.create_oval(
+                    scaled_coords[0], scaled_coords[1],
+                    scaled_coords[2], scaled_coords[3],
+                    fill=fill,
+                    outline=outline,
+                    width=width,
+                    tags='slide_content'
+                )
+            
+            elif element_type == 'line' and len(scaled_coords) >= 4:
+                fill = element_data.get('fill', 'black')
+                width = element_data.get('width', 1)
+                
+                self.demo_slide_canvas.create_line(
+                    scaled_coords[0], scaled_coords[1],
+                    scaled_coords[2], scaled_coords[3],
+                    fill=fill,
+                    width=width,
+                    tags='slide_content'
+                )
+            
+        except Exception as e:
+            logger.error(f"Fehler beim Rendern der identischen Canvas-Shape: {e}")
+    
+    def render_text_in_creator_style(self, slide):
+        """Rendert Text im IDENTISCHEN Creator-Stil (Fallback)"""
+        # IDENTISCHE Positionierung wie im Creator
+        title_x = self.demo_offset_x + (80 * self.demo_scale_factor)  # IDENTISCH
+        title_y = self.demo_offset_y + (60 * self.demo_scale_factor)   # IDENTISCH
+        
+        # Titel mit IDENTISCHEM Styling
+        self.demo_slide_canvas.create_text(
+            title_x,
+            title_y,
+            text=slide.title,
+            font=('Segoe UI', int(28 * self.demo_scale_factor), 'bold'),  # IDENTISCHE Schrift
+            fill='#1E88E5',  # IDENTISCHE Farbe
+            anchor='nw',
+            width=int((self.demo_slide_width - 200) * self.demo_scale_factor),
+            tags='slide_content'
+        )
+        
+        # Content mit IDENTISCHEM Styling
+        content_y = title_y + (120 * self.demo_scale_factor)  # IDENTISCHER Abstand
+        content_lines = slide.content.split('\n')
+        
+        for i, line in enumerate(content_lines[:8]):
+            if line.strip():
+                self.demo_slide_canvas.create_text(
+                    title_x,
+                    content_y + (i * 35 * self.demo_scale_factor),  # IDENTISCHER Zeilenabstand
+                    text=f"• {line.strip()}",
+                    font=('Segoe UI', int(16 * self.demo_scale_factor)),  # IDENTISCHE Schrift
+                    fill='#2C3E50',  # IDENTISCHE Farbe
+                    anchor='nw',
+                    width=int((self.demo_slide_width - 200) * self.demo_scale_factor),
+                    tags='slide_content'
+                )
+        
+        # Branding IDENTISCH zum Creator
+        self.add_identical_branding_on_slide(slide)
+    
+    def add_identical_branding_on_slide(self, slide):
+        """Fügt IDENTISCHES Branding wie im Creator hinzu"""
+        # IDENTISCHE Positionierung und Styling wie Creator
+        brand_x = self.demo_offset_x + (self.demo_slide_width - 250) * self.demo_scale_factor
+        brand_y = self.demo_offset_y + (self.demo_slide_height - 120) * self.demo_scale_factor
+        
+        self.demo_slide_canvas.create_text(
+            brand_x,
+            brand_y,
+            text="BERTRANDT",
+            font=('Segoe UI', int(20 * self.demo_scale_factor), 'bold'),  # IDENTISCH
+            fill='#003366',  # IDENTISCH
+            anchor='se',
+            tags='slide_content'
+        )
+        
+        # Folien-Nummer IDENTISCH
+        number_x = self.demo_offset_x + (80 * self.demo_scale_factor)
+        number_y = self.demo_offset_y + (self.demo_slide_height - 120) * self.demo_scale_factor
+        
+        self.demo_slide_canvas.create_text(
+            number_x,
+            number_y,
+            text=f"Folie {slide.slide_id}",
+            font=('Segoe UI', int(16 * self.demo_scale_factor)),  # IDENTISCH
+            fill='#666666',  # IDENTISCH
+            anchor='sw',
+            tags='slide_content'
+        )
+    
+    def load_presentation_data(self, presentation_data):
+        """Lädt Präsentationsdaten (für initialen Load)"""
+        try:
+            slides = presentation_data.get('presentation', {}).get('slides', [])
+            if slides:
+                logger.info(f"Demo: {len(slides)} Slides zum Laden erhalten")
+                # Optional: Zur ersten Slide wechseln
+                if len(slides) > 0:
+                    first_slide_id = slides[0].get('id', 1)
+                    self.update_slide_display(first_slide_id)
+        except Exception as e:
+            logger.error(f"Fehler beim Laden der Präsentationsdaten im Demo: {e}")
     
     def fix_content_z_order(self):
         """Korrigiert die Z-Order - bringt alle Content-Elemente nach vorne"""
