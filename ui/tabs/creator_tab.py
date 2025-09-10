@@ -2810,7 +2810,201 @@ def auto_save_presentation(self):
         
     except Exception as e:
         logger.error(f"Fehler beim Speichern der Folie {self.current_edit_slide}: {e}")
-        
+    # FILE: ui/tabs/creator_tab.py (neue Methoden hinzufügen)
+
+    def collect_slide_data(self):
+        """Sammelt alle Slide-Daten für Autosave"""
+        try:
+            slides_data = []
+            
+            # Aktuelle Slide-Daten sammeln
+            if hasattr(self, 'current_slide') and self.current_slide:
+                current_slide_data = self.collect_current_slide_data()
+                if current_slide_data:
+                    slides_data.append(current_slide_data)
+            
+            # Alle anderen Slides von content_manager holen
+            from models.content import content_manager
+            all_slides = content_manager.get_all_slides()
+            
+            for slide_id, slide in all_slides.items():
+                # Skip aktuelle Slide (bereits gesammelt)
+                if slide_id == getattr(self, 'current_edit_slide', None):
+                    continue
+                
+                slide_data = {
+                    "id": slide_id,
+                    "title": slide.title,
+                    "content": slide.content,
+                    "config_data": getattr(slide, 'config_data', {})
+                }
+                slides_data.append(slide_data)
+            
+            logger.debug(f"Creator: {len(slides_data)} Slides für Speicherung gesammelt")
+            return slides_data
+            
+        except Exception as e:
+            logger.error(f"Fehler beim Sammeln der Slide-Daten: {e}")
+            return []
+    
+    def collect_current_slide_data(self):
+        """Sammelt Daten der aktuell bearbeiteten Slide"""
+        try:
+            if not hasattr(self, 'slide_canvas') or not self.slide_canvas:
+                return None
+            
+            # Canvas-Elemente sammeln
+            canvas_elements = []
+            
+            for item in self.slide_canvas.find_all():
+                try:
+                    item_type = self.slide_canvas.type(item)
+                    coords = self.slide_canvas.coords(item)
+                    
+                    if item_type == 'window':
+                        # Widget-Element
+                        widget_path = self.slide_canvas.itemcget(item, 'window')
+                        widget = self.slide_canvas.nametowidget(widget_path)
+                        
+                        element_data = {
+                            'type': 'window',
+                            'coords': coords,
+                            'widget_type': widget.winfo_class(),
+                        }
+                        
+                        # Widget-spezifische Daten sammeln
+                        if isinstance(widget, tk.Text):
+                            element_data['text'] = widget.get('1.0', 'end-1c')
+                            element_data['width'] = widget.cget('width')
+                            element_data['height'] = widget.cget('height')
+                            element_data['font'] = str(widget.cget('font'))
+                            element_data['bg'] = widget.cget('bg')
+                            element_data['fg'] = widget.cget('fg')
+                        elif isinstance(widget, tk.Label):
+                            element_data['text'] = widget.cget('text')
+                            element_data['font'] = str(widget.cget('font'))
+                            element_data['bg'] = widget.cget('bg')
+                            element_data['fg'] = widget.cget('fg')
+                        
+                        canvas_elements.append(element_data)
+                    
+                    elif item_type in ['text', 'rectangle', 'oval', 'line']:
+                        # Canvas-Primitive
+                        element_data = {
+                            'type': item_type,
+                            'coords': coords
+                        }
+                        
+                        if item_type == 'text':
+                            element_data['text'] = self.slide_canvas.itemcget(item, 'text')
+                            element_data['font'] = self.slide_canvas.itemcget(item, 'font')
+                            element_data['fill'] = self.slide_canvas.itemcget(item, 'fill')
+                        elif item_type in ['rectangle', 'oval']:
+                            element_data['fill'] = self.slide_canvas.itemcget(item, 'fill')
+                            element_data['outline'] = self.slide_canvas.itemcget(item, 'outline')
+                            element_data['width'] = self.slide_canvas.itemcget(item, 'width')
+                        elif item_type == 'line':
+                            element_data['fill'] = self.slide_canvas.itemcget(item, 'fill')
+                            element_data['width'] = self.slide_canvas.itemcget(item, 'width')
+                        
+                        canvas_elements.append(element_data)
+                
+                except Exception as e:
+                    # Element-spezifische Fehler ignorieren
+                    continue
+            
+            # Slide-Daten zusammenstellen
+            slide_data = {
+                "id": getattr(self, 'current_edit_slide', 1),
+                "title": self.get_current_slide_title(),
+                "content": self.get_current_slide_content(),
+                "config_data": {
+                    "canvas_elements": canvas_elements,
+                    "last_modified": datetime.now().isoformat()
+                }
+            }
+            
+            return slide_data
+            
+        except Exception as e:
+            logger.error(f"Fehler beim Sammeln der aktuellen Slide-Daten: {e}")
+            return None
+    
+    def get_current_slide_title(self):
+        """Extrahiert Titel der aktuellen Slide aus Canvas"""
+        try:
+            # Von content_manager holen falls verfügbar
+            from models.content import content_manager
+            current_id = getattr(self, 'current_edit_slide', 1)
+            slide = content_manager.get_slide(current_id)
+            
+            if slide:
+                return slide.title
+            else:
+                return f"Folie {current_id}"
+                
+        except:
+            return f"Folie {getattr(self, 'current_edit_slide', 1)}"
+    
+    def get_current_slide_content(self):
+        """Extrahiert Content der aktuellen Slide aus Canvas"""
+        try:
+            # Text aus allen Text-Widgets sammeln
+            content_parts = []
+            
+            if hasattr(self, 'slide_canvas') and self.slide_canvas:
+                for item in self.slide_canvas.find_all():
+                    try:
+                        item_type = self.slide_canvas.type(item)
+                        
+                        if item_type == 'window':
+                            widget_path = self.slide_canvas.itemcget(item, 'window')
+                            widget = self.slide_canvas.nametowidget(widget_path)
+                            
+                            if isinstance(widget, tk.Text):
+                                text_content = widget.get('1.0', 'end-1c').strip()
+                                if text_content:
+                                    content_parts.append(text_content)
+                        
+                        elif item_type == 'text':
+                            text_content = self.slide_canvas.itemcget(item, 'text').strip()
+                            if text_content:
+                                content_parts.append(text_content)
+                    except:
+                        continue
+            
+            return "\n\n".join(content_parts) if content_parts else "Automatisch gespeichert"
+            
+        except Exception as e:
+            logger.error(f"Fehler beim Extrahieren des Slide-Contents: {e}")
+            return "Fehler beim Content-Sammeln"
+    
+    def load_presentation_data(self, presentation_data):
+        """Lädt Präsentationsdaten (für initialer Load)"""
+        try:
+            slides = presentation_data.get('presentation', {}).get('slides', [])
+            if slides:
+                logger.info(f"Creator: {len(slides)} Slides zum Laden erhalten")
+                # Optional: Zur ersten Slide wechseln
+                if len(slides) > 0:
+                    first_slide_id = slides[0].get('id', 1)
+                    if hasattr(self, 'load_slide_to_editor'):
+                        self.load_slide_to_editor(first_slide_id)
+        except Exception as e:
+            logger.error(f"Fehler beim Laden der Präsentationsdaten im Creator: {e}")
+    
+    def save_current_slide_content(self):
+        """Speichert aktuellen Slide-Inhalt (für manuellen Save)"""
+        try:
+            current_data = self.collect_current_slide_data()
+            if current_data:
+                logger.debug(f"Creator: Aktuelle Slide {current_data['id']} Inhalt gesammelt")
+                return current_data
+            return None
+        except Exception as e:
+            logger.error(f"Fehler beim Speichern des aktuellen Slide-Inhalts: {e}")
+            return None
+            
     def show(self):
         """Zeigt den Tab"""
         if not self.visible:
