@@ -21,6 +21,7 @@ class CreatorTab:
         self.visible = False
         self.current_edit_slide = 1
         self.current_slide = None
+        self.auto_save_timer_id = None
         
         # Drag & Drop Variablen
         self.drag_data = {'element_type': None, 'widget': None}
@@ -31,7 +32,25 @@ class CreatorTab:
         self.offset_y = 0
         
         self.create_creator_content()
-    
+        
+        self.schedule_auto_save()
+        
+    def schedule_auto_save(self):
+    """Планує автоматичне збереження через 1 секунду"""
+    if self.auto_save_timer_id:
+        self.main_window.root.after_cancel(self.auto_save_timer_id)
+    self.auto_save_timer_id = self.main_window.root.after(1000, self.auto_save_presentation)
+
+def auto_save_presentation(self):
+    """Автоматично зберігає презентацію щосекундно"""
+    try:
+        self.save_current_slide_content()
+        # Планує наступне збереження
+        self.schedule_auto_save()
+    except Exception as e:
+        logger.error(f"Fehler beim Auto-Speichern: {e}")
+        self.schedule_auto_save()  # Продовжуємо спроби
+        
     def create_creator_content(self):
         """Erstellt den 3-Spalten Creator-Tab"""
         colors = theme_manager.get_colors()
@@ -2770,7 +2789,28 @@ class CreatorTab:
             bg=colors['background_tertiary']
         )
         self.status_label.pack(side='left', padx=15, pady=10)
-    
+        
+    def save_current_slide_content(self):
+    """Speichere aktuellen Folieninhalt mit allen Änderungen - Erweiterte Version"""
+    try:
+        if not hasattr(self, 'current_slide') or not self.current_slide:
+            return
+        
+        # Alle geänderten Daten aus Canvas sammeln
+        slide_data = self.extract_slide_data_from_canvas()
+        
+        # Präsentation über presentation_manager aktualisieren
+        from models.presentation import presentation_manager
+        presentation_manager.update_slide(self.current_edit_slide, slide_data)
+        
+        # Speicherstatus anzeigen
+        self.show_save_status("Auto-Speichern erfolgreich")
+        
+        logger.info(f"Folie {self.current_edit_slide} automatisch gespeichert")
+        
+    except Exception as e:
+        logger.error(f"Fehler beim Speichern der Folie {self.current_edit_slide}: {e}")
+        
     def show(self):
         """Zeigt den Tab"""
         if not self.visible:
