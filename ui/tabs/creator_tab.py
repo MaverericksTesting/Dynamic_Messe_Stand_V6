@@ -11,7 +11,248 @@ import json
 from PIL import Image, ImageTk
 from core.theme import theme_manager
 from core.logger import logger
+from PyQt5.QtWidgets import *
+from PyQt5.QtCore import *
+from PyQt5.QtGui import *
+from ui.components.slide_widget import SlideWidget
 
+class CreatorTab(QWidget):
+    slide_changed = pyqtSignal(int, dict)  # Сигнал про зміну слайду
+    
+    def __init__(self, parent=None):
+        super().__init__(parent)
+        self.current_slide = 1
+        self.total_slides = 10
+        self.slides = {}
+        self.setup_ui()
+        self.setup_slides()
+        
+    def setup_ui(self):
+        """Налаштування інтерфейсу Creator табу"""
+        self.main_layout = QHBoxLayout(self)
+        self.main_layout.setContentsMargins(5, 5, 5, 5)
+        
+        # Ліва панель - список слайдів
+        self.setup_slides_list()
+        
+        # Права панель - редактор слайдів
+        self.setup_editor()
+        
+    def setup_slides_list(self):
+        """Налаштування списку слайдів"""
+        self.slides_panel = QWidget()
+        self.slides_panel.setMaximumWidth(300)
+        self.slides_panel.setStyleSheet("""
+            QWidget {
+                background: #333333;
+                border-right: 1px solid #555555;
+            }
+        """)
+        
+        slides_layout = QVBoxLayout(self.slides_panel)
+        
+        # Заголовок панелі
+        header_label = QLabel("Demo-Folien")
+        header_label.setStyleSheet("""
+            QLabel {
+                color: white;
+                font-size: 16px;
+                font-weight: bold;
+                padding: 10px;
+                background: #404040;
+            }
+        """)
+        slides_layout.addWidget(header_label)
+        
+        # Підзаголовок
+        sub_header = QLabel("Klicken zum Bearbeiten")
+        sub_header.setStyleSheet("""
+            QLabel {
+                color: #CCCCCC;
+                font-size: 12px;
+                padding: 5px 10px;
+            }
+        """)
+        slides_layout.addWidget(sub_header)
+        
+        # Список слайдів
+        self.slides_list = QListWidget()
+        self.slides_list.setStyleSheet("""
+            QListWidget {
+                background: #333333;
+                border: none;
+                outline: none;
+            }
+            QListWidget::item {
+                color: white;
+                padding: 12px 10px;
+                border-bottom: 1px solid #444444;
+                background: #333333;
+            }
+            QListWidget::item:selected {
+                background: #0078d4;
+                color: white;
+            }
+            QListWidget::item:hover {
+                background: #404040;
+            }
+        """)
+        
+        # Додаємо елементи списку
+        for i in range(1, self.total_slides + 1):
+            item_text = f"Folie {i}\n{self.get_slide_title(i)}"
+            item = QListWidgetItem(item_text)
+            item.setData(Qt.UserRole, i)
+            self.slides_list.addItem(item)
+            
+        self.slides_list.currentRowChanged.connect(self.on_slide_selected)
+        slides_layout.addWidget(self.slides_list)
+        
+        self.main_layout.addWidget(self.slides_panel)
+        
+    def setup_editor(self):
+        """Налаштування редактора слайдів"""
+        self.editor_panel = QWidget()
+        editor_layout = QVBoxLayout(self.editor_panel)
+        
+        # Заголовок редактора
+        self.editor_header = QLabel("IO-Folie 1: BumbleB - Das automatisierte Shuttle")
+        self.editor_header.setStyleSheet("""
+            QLabel {
+                color: white;
+                font-size: 18px;
+                font-weight: bold;
+                padding: 15px;
+                background: #404040;
+                border-bottom: 2px solid #0078d4;
+            }
+        """)
+        editor_layout.addWidget(self.editor_header)
+        
+        # Навігаційні кнопки
+        nav_widget = QWidget()
+        nav_layout = QHBoxLayout(nav_widget)
+        
+        self.back_btn = QPushButton("◀ Zurück")
+        self.back_btn.clicked.connect(self.prev_slide)
+        
+        spacer = QSpacerItem(40, 20, QSizePolicy.Expanding, QSizePolicy.Minimum)
+        
+        self.forward_btn = QPushButton("Weiter ▶")
+        self.forward_btn.clicked.connect(self.next_slide)
+        
+        # Стилі для навігаційних кнопок
+        btn_style = """
+            QPushButton {
+                background: #0078d4;
+                color: white;
+                border: none;
+                padding: 8px 16px;
+                border-radius: 4px;
+                font-weight: bold;
+            }
+            QPushButton:hover {
+                background: #106ebe;
+            }
+            QPushButton:disabled {
+                background: #666666;
+                color: #999999;
+            }
+        """
+        self.back_btn.setStyleSheet(btn_style)
+        self.forward_btn.setStyleSheet(btn_style)
+        
+        nav_layout.addWidget(self.back_btn)
+        nav_layout.addItem(spacer)
+        nav_layout.addWidget(self.forward_btn)
+        
+        editor_layout.addWidget(nav_widget)
+        
+        # Контейнер для слайдів
+        self.editor_container = QStackedWidget()
+        editor_layout.addWidget(self.editor_container)
+        
+        # Кнопки дій
+        self.setup_action_buttons(editor_layout)
+        
+        self.main_layout.addWidget(self.editor_panel)
+        
+    def setup_action_buttons(self, layout):
+        """Налаштування кнопок дій"""
+        actions_widget = QWidget()
+        actions_layout = QHBoxLayout(actions_widget)
+        
+        # Кнопка збереження
+        self.save_btn = QPushButton("💾 Speichern")
+        self.save_btn.clicked.connect(self.save_current_slide)
+        
+        # Кнопка попереднього перегляду
+        self.preview_btn = QPushButton("👁 Vorschau")
+        self.preview_btn.clicked.connect(self.preview_slide)
+        
+        # Стилі для кнопок дій
+        action_btn_style = """
+            QPushButton {
+                background: #28a745;
+                color: white;
+                border: none;
+                padding: 10px 20px;
+                border-radius: 5px;
+                font-weight: bold;
+                margin: 5px;
+            }
+            QPushButton:hover {
+                background: #218838;
+            }
+        """
+        
+        self.save_btn.setStyleSheet(action_btn_style)
+        self.preview_btn.setStyleSheet(action_btn_style.replace('#28a745', '#17a2b8').replace('#218838', '#138496'))
+        
+        actions_layout.addWidget(self.save_btn)
+        actions_layout.addWidget(self.preview_btn)
+        actions_layout.addStretch()
+        
+        layout.addWidget(actions_widget)
+        
+    def setup_slides(self):
+        """Створення всіх слайдів для редагування"""
+        for slide_id in range(1, self.total_slides + 1):
+            slide_widget = SlideWidget(slide_id, mode='creator', parent=self)
+            slide_widget.content_changed.connect(
+                lambda data, sid=slide_id: self.on_slide_content_changed(sid, data)
+            )
+            self.slides[slide_id] = slide_widget
+            self.editor_container.addWidget(slide_widget)
+            
+        # Показуємо перший слайд
+        self.show_slide(1)
+        self.slides_list.setCurrentRow(0)
+        
+    def get_slide_title(self, slide_id):
+        """Отримання заголовка слайду"""
+        titles = {
+            1: "BumbleB - Das automa...",
+            2: "BumbleB - Wie die Hu...", 
+            3: "Einsatzgebiete und...",
+            4: "Sicherheitssysteme...",
+            5: "Nachhaltigkeit & U..."
+        }
+        return titles.get(slide_id, f"Slide {slide_id}")
+        
+    def show_slide(self, slide_id):
+        """Показати слайд для редагування"""
+        if slide_id in self.slides:
+            self.current_slide = slide_id
+            self.editor_container.setCurrentWidget(self.slides[slide_id])
+            self.editor_header.setText(f"IO-Folie {slide_id}: {self.get_slide_title(slide_id)}")
+            
+            # Оновлюємо стан кнопок
+            self.back_btn.setEnabled(slide_id > 1)
+            self.forward_btn.setEnabled(slide_id < self.total_slides)
+            
+    def on_slide_selected(
+        
 class CreatorTab:
     """3-Spalten Creator-Tab für Demo-Folien Bearbeitung"""
     
