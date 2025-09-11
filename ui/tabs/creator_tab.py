@@ -11,9 +11,6 @@ import json
 from PIL import Image, ImageTk
 from core.theme import theme_manager
 from core.logger import logger
-from PyQt5.QtWidgets import *
-from PyQt5.QtCore import *
-from PyQt5.QtGui import *
 from ui.components.slide_widget import SlideWidget
 from datetime import datetime
 
