@@ -14,7 +14,7 @@ sys.path.insert(0, os.path.dirname(__file__))
 from core.logger import logger
 from core.config import config
 from models.hardware import hardware_manager
-from ui.main_window import MainWindow
+from ui.main_window.py import MainWindow
 
 def setup_hardware():
     """Initialisiert Hardware-Verbindungen"""
