@@ -15,7 +15,6 @@ from ui.components.header import HeaderComponent
 from ui.components.status_panel import StatusPanelComponent
 from ui.components.footer import FooterComponent
 from ui.tabs.home_tab import HomeTab
-from ui.tabs.demo_tab import DemoTab
 from ui.tabs.creator_tab import CreatorTab
 from ui.tabs.presentation_tab import PresentationTab
 
