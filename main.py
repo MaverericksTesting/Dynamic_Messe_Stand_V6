@@ -7,14 +7,12 @@ Bertrandt Interactive Display System
 import sys
 import os
 import argparse
-
-# Pfad für Imports hinzufügen
-sys.path.insert(0, os.path.dirname(__file__))
-
 from core.logger import logger
 from core.config import config
 from models.hardware import hardware_manager
 from ui.main_window import MainWindow
+
+sys.path.insert(0, os.path.dirname(__file__))
 
 def setup_hardware():
     """Initialisiert Hardware-Verbindungen"""
