@@ -11,7 +11,121 @@ from core.logger import logger
 from services.demo import demo_service
 from models.content import content_manager
 from ui.components.slide_renderer import SlideRenderer
+from PyQt5.QtWidgets import *
+from PyQt5.QtCore import *
+from PyQt5.QtGui import *
+from ui.components.slide_widget import SlideWidget
 
+class DemoTab(QWidget):
+    def __init__(self, parent=None):
+        super().__init__(parent)
+        self.current_slide = 1
+        self.total_slides = 10
+        self.slides = {}
+        self.setup_ui()
+        self.setup_slides()
+        
+    def setup_ui(self):
+        """Налаштування інтерфейсу Demo табу"""
+        self.layout = QVBoxLayout(self)
+        self.layout.setContentsMargins(0, 0, 0, 0)
+        
+        # Контейнер для слайдів
+        self.slides_container = QStackedWidget()
+        self.slides_container.setObjectName("slidesContainer")
+        
+        # Контролери навігації
+        self.setup_navigation()
+        
+        self.layout.addWidget(self.slides_container)
+        self.layout.addWidget(self.nav_container)
+        
+    def setup_slides(self):
+        """Створення всіх слайдів"""
+        for slide_id in range(1, self.total_slides + 1):
+            slide_widget = SlideWidget(slide_id, mode='demo', parent=self)
+            self.slides[slide_id] = slide_widget
+            self.slides_container.addWidget(slide_widget)
+            
+        # Показуємо перший слайд
+        self.show_slide(1)
+        
+    def setup_navigation(self):
+        """Налаштування навігації"""
+        self.nav_container = QWidget()
+        self.nav_layout = QHBoxLayout(self.nav_container)
+        
+        # Кнопка "Назад"
+        self.prev_btn = QPushButton("◀ Zurück")
+        self.prev_btn.clicked.connect(self.prev_slide)
+        self.prev_btn.setStyleSheet("""
+            QPushButton {
+                background: #404040;
+                color: white;
+                border: none;
+                padding: 10px 20px;
+                border-radius: 5px;
+                font-weight: bold;
+            }
+            QPushButton:hover {
+                background: #505050;
+            }
+        """)
+        
+        # Spacer
+        spacer = QSpacerItem(40, 20, QSizePolicy.Expanding, QSizePolicy.Minimum)
+        
+        # Індикатор слайдів
+        self.slide_indicator = QLabel("1/10")
+        self.slide_indicator.setStyleSheet("""
+            QLabel {
+                color: white;
+                font-size: 14px;
+                font-weight: bold;
+                padding: 10px;
+            }
+        """)
+        
+        # Spacer
+        spacer2 = QSpacerItem(40, 20, QSizePolicy.Expanding, QSizePolicy.Minimum)
+        
+        # Кнопка "Далі"
+        self.next_btn = QPushButton("Weiter ▶")
+        self.next_btn.clicked.connect(self.next_slide)
+        self.next_btn.setStyleSheet(self.prev_btn.styleSheet())
+        
+        self.nav_layout.addWidget(self.prev_btn)
+        self.nav_layout.addItem(spacer)
+        self.nav_layout.addWidget(self.slide_indicator)
+        self.nav_layout.addItem(spacer2)
+        self.nav_layout.addWidget(self.next_btn)
+        
+    def show_slide(self, slide_id):
+        """Показати конкретний слайд"""
+        if slide_id in self.slides:
+            self.current_slide = slide_id
+            self.slides_container.setCurrentWidget(self.slides[slide_id])
+            self.slide_indicator.setText(f"{slide_id}/{self.total_slides}")
+            
+            # Оновлюємо стан кнопок
+            self.prev_btn.setEnabled(slide_id > 1)
+            self.next_btn.setEnabled(slide_id < self.total_slides)
+            
+    def next_slide(self):
+        """Перехід до наступного слайду"""
+        if self.current_slide < self.total_slides:
+            self.show_slide(self.current_slide + 1)
+            
+    def prev_slide(self):
+        """Перехід до попереднього слайду"""
+        if self.current_slide > 1:
+            self.show_slide(self.current_slide - 1)
+            
+    def refresh_slides(self):
+        """Оновлення всіх слайдів (викликається при змінах у Creator)"""
+        for slide_id, slide_widget in self.slides.items():
+            slide_widget.load_content()
+            
 class DemoTab:
     """Demo-Tab für automatische Präsentationen"""
     
