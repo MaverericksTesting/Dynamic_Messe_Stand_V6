@@ -10,9 +10,6 @@ from core.theme import theme_manager, THEME_VARS, _mix
 from core.logger import logger
 from services.demo import demo_service
 from models.content import content_manager
-from PyQt5.QtWidgets import *
-from PyQt5.QtCore import *
-from PyQt5.QtGui import *
 from ui.components.slide_widget import SlideWidget
 
 class DemoTab(QWidget):
