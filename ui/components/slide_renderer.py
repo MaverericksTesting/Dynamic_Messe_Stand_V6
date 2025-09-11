@@ -12,7 +12,6 @@ class SlideRenderer:
     
     @staticmethod
     def render_slide_to_canvas(canvas, slide_data, canvas_width, canvas_height):
-    """Rendert eine Slide einheitlich für Creator und Demo"""
     # Canvas leeren
     canvas.delete("all")
     
