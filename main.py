@@ -3,14 +3,11 @@
 Dynamic Messe Stand V4 - Hauptanwendung
 Bertrandt Interactive Display System
 """
-
 import sys
 import os
 import argparse
-
 # Pfad für Imports hinzufügen
 sys.path.insert(0, os.path.dirname(__file__))
-
 from core.logger import logger
 from core.config import config
 from models.hardware import hardware_manager
@@ -42,6 +39,51 @@ def setup_hardware():
         logger.error(f"Fehler beim Hardware-Setup: {e}")
         return False
 
+def create_and_run_gui(esp32_port=None):
+    """Erstellt und startet die GUI-Anwendung"""
+    try:
+        # Dynamischer Import der GUI-Klasse
+        from gui.main_window import MainWindow
+        
+        logger.info("🖥️ GUI wird initialisiert...")
+        gui_app = MainWindow(esp32_port=esp32_port)
+        
+        logger.info("✅ Dynamic Messe Stand V4 erfolgreich gestartet!")
+        logger.info("💡 Drücke F11 für Vollbild, ESC zum Verlassen")
+        
+        # GUI-Hauptschleife starten
+        gui_app.run()
+        
+    except ImportError as e:
+        logger.error(f"GUI-Import-Fehler: {e}")
+        logger.info("🔄 Fallback: Textbasierte Anwendung wird gestartet...")
+        run_text_mode()
+    except Exception as e:
+        logger.error(f"GUI-Fehler: {e}")
+        raise
+
+def run_text_mode():
+    """Fallback-Modus ohne GUI"""
+    logger.info("📝 Textmodus aktiv - Drücke 'q' + Enter zum Beenden")
+    
+    try:
+        while True:
+            user_input = input("Eingabe (q zum Beenden): ").strip().lower()
+            if user_input == 'q':
+                break
+            elif user_input == 'status':
+                logger.info("📊 System-Status wird angezeigt...")
+                # Hier können Sie Status-Informationen anzeigen
+            elif user_input == 'test':
+                logger.info("🧪 Hardware-Test wird durchgeführt...")
+                # Hier können Sie Hardware-Tests durchführen
+            else:
+                logger.info(f"Unbekannter Befehl: {user_input}")
+                logger.info("Verfügbare Befehle: status, test, q")
+                
+    except KeyboardInterrupt:
+        logger.info("👋 Textmodus durch Benutzer beendet")
+
 def main():
     """Hauptfunktion"""
     # Argument-Parser
@@ -49,6 +91,7 @@ def main():
     parser.add_argument('--esp32-port', help='ESP32 Port (Standard: /dev/ttyUSB0)')
     parser.add_argument('--no-hardware', action='store_true', help='Ohne Hardware-Verbindungen starten')
     parser.add_argument('--debug', action='store_true', help='Debug-Modus aktivieren')
+    parser.add_argument('--text-mode', action='store_true', help='Textmodus ohne GUI starten')
     
     args = parser.parse_args()
     
@@ -66,19 +109,15 @@ def main():
         if not args.no_hardware:
             hardware_success = setup_hardware()
             if not hardware_success:
-                logger.warning("⚠️ Keine Hardware-Verbindungen erfolgreich - GUI startet trotzdem")
+                logger.warning("⚠️ Keine Hardware-Verbindungen erfolgreich - Anwendung startet trotzdem")
         else:
             logger.info("🔧 Hardware-Setup übersprungen (--no-hardware)")
         
-        # GUI starten
-        logger.info("🖥️ GUI wird initialisiert...")
-        app = MainWindow(esp32_port=args.esp32_port)
-        
-        logger.info("✅ Dynamic Messe Stand V4 erfolgreich gestartet!")
-        logger.info("💡 Drücke F11 für Vollbild, ESC zum Verlassen")
-        
-        # GUI-Hauptschleife starten
-        app.run()
+        # Anwendung starten
+        if args.text_mode:
+            run_text_mode()
+        else:
+            create_and_run_gui(esp32_port=args.esp32_port)
         
     except KeyboardInterrupt:
         logger.info("👋 Anwendung durch Benutzer beendet")
