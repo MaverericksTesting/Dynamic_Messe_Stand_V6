@@ -1,6 +1,3 @@
-from PyQt5.QtWidgets import *
-from PyQt5.QtCore import *
-from PyQt5.QtGui import *
 from core.style_manager import StyleManager
 
 class SlideWidget(QWidget):
