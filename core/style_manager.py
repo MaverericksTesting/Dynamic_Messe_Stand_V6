@@ -1,8 +1,5 @@
 import json
 import os
-from PyQt5.QtCore import QSettings, QObject, pyqtSignal
-from PyQt5.QtGui import QFont, QFontMetrics
-from PyQt5.QtWidgets import QApplication
 
 class StyleManager(QObject):
     """
