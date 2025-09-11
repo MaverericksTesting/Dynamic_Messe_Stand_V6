@@ -58,9 +58,15 @@ def create_and_run_gui(esp32_port=None):
         logger.error(f"GUI-Import-Fehler: {e}")
         logger.info("🔄 Fallback: Textbasierte Anwendung wird gestartet...")
         run_text_mode()
+    except SyntaxError as e:
+        logger.error(f"GUI-Syntax-Fehler: {e}")
+        logger.error("🔧 Bitte überprüfen Sie die Syntax in den UI-Dateien")
+        logger.info("🔄 Fallback: Textbasierte Anwendung wird gestartet...")
+        run_text_mode()
     except Exception as e:
         logger.error(f"GUI-Fehler: {e}")
-        raise
+        logger.info("🔄 Fallback: Textbasierte Anwendung wird gestartet...")
+        run_text_mode()
 
 def run_text_mode():
     """Fallback-Modus ohne GUI"""
