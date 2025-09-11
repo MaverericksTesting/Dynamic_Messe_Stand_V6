@@ -744,3 +744,4 @@ class CreatorTab:
         self.slide_canvas.create_rectangle(
             self.offset_x + shadow_offset, self.offset_y + shadow_offset,
             self.offset_x + scaled_width + shadow_offset, self.offset_y + scale
+        )
