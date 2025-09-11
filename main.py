@@ -42,8 +42,8 @@ def setup_hardware():
 def create_and_run_gui(esp32_port=None):
     """Erstellt und startet die GUI-Anwendung"""
     try:
-        # Dynamischer Import der GUI-Klasse
-        from gui.main_window import MainWindow
+        # Dynamischer Import der GUI-Klasse aus ui/ директории
+        from ui.main_window import MainWindow
         
         logger.info("🖥️ GUI wird initialisiert...")
         gui_app = MainWindow(esp32_port=esp32_port)
