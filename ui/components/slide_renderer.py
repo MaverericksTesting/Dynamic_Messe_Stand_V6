@@ -231,6 +231,7 @@ class SlideRenderer:
             bg='#F8F9FA'
         )
         number_label.pack(side='left', padx=10, pady=5)
+        
     @staticmethod
 def render_slide_to_canvas(canvas, slide_data, canvas_width, canvas_height):
     """Rendert eine Slide einheitlich für Creator und Demo"""
