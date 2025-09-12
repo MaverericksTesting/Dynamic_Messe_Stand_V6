@@ -1,124 +1,209 @@
-from core.style_manager import StyleManager
+#!/usr/bin/env python3
+"""
+Slide Widget для Dynamic Messe Stand V4
+Уніфікований віджет слайду для Demo і Creator режимів - TKINTER VERSION
+"""
 
-class SlideWidget(QWidget):
+import tkinter as tk
+from tkinter import ttk
+from core.theme import theme_manager
+from core.logger import logger
+
+class SlideWidget(tk.Frame):
     """
     Уніфікований віджет слайду для Demo і Creator режимів
     """
-    content_changed = pyqtSignal(dict)
     
-    def __init__(self, slide_id, mode='demo', parent=None):
+    def __init__(self, parent, slide_id, mode='demo', main_window=None):
         super().__init__(parent)
         self.slide_id = slide_id
         self.mode = mode  # 'demo' або 'creator'
-        self.style_manager = StyleManager()
+        self.main_window = main_window
         self.content_elements = {}
+        self.content_changed_callbacks = []
         
         self.setup_ui()
         self.load_content()
         
     def setup_ui(self):
         """Налаштування інтерфейсу"""
-        self.setObjectName(f"slide_{self.slide_id}")
+        colors = theme_manager.get_colors()
+        fonts = self.main_window.fonts if self.main_window else {
+            'title': ('Segoe UI', 24, 'bold'),
+            'body': ('Segoe UI', 14, 'normal'),
+            'caption': ('Segoe UI', 12, 'normal')
+        }
+        
+        self.configure(bg=colors['background_secondary'])
         
         # Головний layout
-        self.main_layout = QVBoxLayout(self)
-        self.main_layout.setContentsMargins(20, 20, 20, 20)
-        self.main_layout.setSpacing(15)
+        self.main_frame = tk.Frame(self, bg=colors['background_secondary'])
+        self.main_frame.pack(fill='both', expand=True, padx=20, pady=20)
         
-        # Контейнер для контенту
-        self.content_container = QFrame()
-        self.content_container.setObjectName("contentContainer")
-        self.content_container.setStyleSheet("""
-            QFrame#contentContainer {
-                background: #2b2b2b;
-                border: 1px solid #404040;
-                border-radius: 8px;
-            }
-        """)
-        
-        self.content_layout = QVBoxLayout(self.content_container)
-        self.content_layout.setContentsMargins(20, 20, 20, 20)
-        self.content_layout.setSpacing(10)
+        # Контейнер для контенту (PowerPoint-стиль)
+        self.content_container = tk.Frame(
+            self.main_frame,
+            bg='white',
+            relief='solid',
+            bd=2,
+            highlightbackground='#CCCCCC',
+            highlightthickness=1
+        )
+        self.content_container.pack(fill='both', expand=True)
         
         # Заголовок слайду
-        self.setup_title()
+        self.setup_title(colors, fonts)
         
         # Контент слайду
-        self.setup_content()
+        self.setup_content(colors, fonts)
         
-        self.main_layout.addWidget(self.content_container)
-        
-        # Застосовуємо стилі
-        self.apply_styles()
-        
-    def setup_title(self):
+    def setup_title(self, colors, fonts):
         """Налаштування заголовка"""
+        title_frame = tk.Frame(
+            self.content_container,
+            bg='#F8F9FA',
+            height=80
+        )
+        title_frame.pack(fill='x', padx=2, pady=(2, 0))
+        title_frame.pack_propagate(False)
+        
         if self.mode == 'creator':
-            self.title_edit = QLineEdit()
-            self.title_edit.setProperty('elementType', 'slide_title')
-            self.title_edit.setPlaceholderText("Введіть заголовок слайду...")
-            self.title_edit.textChanged.connect(self.on_content_changed)
-            self.content_layout.addWidget(self.title_edit)
+            self.title_edit = tk.Text(
+                title_frame,
+                height=2,
+                font=fonts['title'],
+                bg='#F8F9FA',
+                fg='#2C3E50',
+                relief='flat',
+                bd=0,
+                wrap='word'
+            )
+            self.title_edit.pack(expand=True, fill='both', padx=10, pady=10)
+            self.title_edit.bind('<KeyRelease>', self.on_content_changed)
             self.content_elements['title'] = self.title_edit
         else:
-            self.title_label = QLabel()
-            self.title_label.setProperty('elementType', 'slide_title')
-            self.title_label.setAlignment(Qt.AlignCenter)
-            self.title_label.setWordWrap(True)
-            self.content_layout.addWidget(self.title_label)
+            self.title_label = tk.Label(
+                title_frame,
+                font=fonts['title'],
+                fg='#2C3E50',
+                bg='#F8F9FA',
+                wraplength=800,
+                justify='center'
+            )
+            self.title_label.pack(expand=True, pady=10)
             self.content_elements['title'] = self.title_label
             
-    def setup_content(self):
+    def setup_content(self, colors, fonts):
         """Налаштування контенту"""
+        content_frame = tk.Frame(
+            self.content_container,
+            bg='white'
+        )
+        content_frame.pack(fill='both', expand=True, padx=20, pady=20)
+        
         if self.mode == 'creator':
-            self.content_edit = QTextEdit()
-            self.content_edit.setProperty('elementType', 'slide_content')
-            self.content_edit.setPlaceholderText("Введіть текст слайду...")
-            self.content_edit.textChanged.connect(self.on_content_changed)
-            self.content_layout.addWidget(self.content_edit)
+            self.content_edit = tk.Text(
+                content_frame,
+                font=fonts['body'],
+                bg='white',
+                fg='#1F1F1F',
+                relief='flat',
+                bd=1,
+                wrap='word'
+            )
+            self.content_edit.pack(fill='both', expand=True)
+            self.content_edit.bind('<KeyRelease>', self.on_content_changed)
             self.content_elements['content'] = self.content_edit
         else:
-            self.content_label = QLabel()
-            self.content_label.setProperty('elementType', 'slide_content')
-            self.content_label.setAlignment(Qt.AlignTop | Qt.AlignLeft)
-            self.content_label.setWordWrap(True)
-            self.content_layout.addWidget(self.content_label)
-            self.content_elements['content'] = self.content_label
+            # Scrollable text area для demo
+            text_frame = tk.Frame(content_frame, bg='white')
+            text_frame.pack(fill='both', expand=True)
             
-    def apply_styles(self):
-        """Застосування стилів до елементів"""
-        # Стилі для заголовка
-        title_style = self.style_manager.get_style_sheet('slide_title')
-        self.content_elements['title'].setStyleSheet(title_style)
+            scrollbar = tk.Scrollbar(text_frame)
+            scrollbar.pack(side='right', fill='y')
+            
+            self.content_label = tk.Text(
+                text_frame,
+                font=fonts['body'],
+                bg='white',
+                fg='#1F1F1F',
+                wrap='word',
+                relief='flat',
+                bd=0,
+                state='disabled',
+                yscrollcommand=scrollbar.set
+            )
+            self.content_label.pack(side='left', fill='both', expand=True)
+            scrollbar.config(command=self.content_label.yview)
+            self.content_elements['content'] = self.content_label
         
-        # Стилі для контенту
-        content_style = self.style_manager.get_style_sheet('slide_content')
-        self.content_elements['content'].setStyleSheet(content_style)
+        # Footer з брендингом
+        self.setup_footer(colors, fonts)
+            
+    def setup_footer(self, colors, fonts):
+        """Налаштування футера з брендингом"""
+        footer_frame = tk.Frame(
+            self.content_container,
+            bg='#F8F9FA',
+            height=30
+        )
+        footer_frame.pack(fill='x', padx=2, pady=(0, 2))
+        footer_frame.pack_propagate(False)
         
-        # Встановлення мінімальних розмірів
-        self.content_elements['title'].setMinimumHeight(50)
-        self.content_elements['content'].setMinimumHeight(200)
+        # Bertrandt-Branding
+        branding_label = tk.Label(
+            footer_frame,
+            text="BERTRANDT",
+            font=fonts['caption'],
+            fg='#003366',
+            bg='#F8F9FA'
+        )
+        branding_label.pack(side='right', padx=10, pady=5)
+        
+        # Folien-Nummer
+        number_label = tk.Label(
+            footer_frame,
+            text=f"Folie {self.slide_id}",
+            font=fonts['caption'],
+            fg='#666666',
+            bg='#F8F9FA'
+        )
+        number_label.pack(side='left', padx=10, pady=5)
         
     def load_content(self):
         """Завантаження збереженого контенту"""
-        content_data = self.style_manager.load_slide_content(self.slide_id)
-        
-        if content_data:
-            # Завантажуємо заголовок
-            title_text = content_data.get('title', '')
-            if self.mode == 'creator':
-                self.title_edit.setText(title_text)
+        try:
+            # Завантажуємо з content manager
+            from models.content import content_manager
+            slide_data = content_manager.get_slide(self.slide_id)
+            
+            if slide_data:
+                # Завантажуємо заголовок
+                title_text = slide_data.title
+                if self.mode == 'creator':
+                    self.title_edit.delete('1.0', 'end')
+                    self.title_edit.insert('1.0', title_text)
+                else:
+                    self.title_label.configure(text=title_text)
+                    
+                # Завантажуємо контент
+                content_text = slide_data.content
+                if self.mode == 'creator':
+                    self.content_edit.delete('1.0', 'end')
+                    self.content_edit.insert('1.0', content_text)
+                else:
+                    self.content_label.configure(state='normal')
+                    self.content_label.delete('1.0', 'end')
+                    self.content_label.insert('1.0', content_text)
+                    self.content_label.configure(state='disabled')
+                    
+                logger.debug(f"Slide {self.slide_id} content loaded successfully")
             else:
-                self.title_label.setText(title_text)
+                # Встановлюємо контент за замовчуванням
+                self.set_default_content()
                 
-            # Завантажуємо контент
-            content_text = content_data.get('content', '')
-            if self.mode == 'creator':
-                self.content_edit.setPlainText(content_text)
-            else:
-                self.content_label.setText(content_text)
-        else:
-            # Встановлюємо контент за замовчуванням
+        except Exception as e:
+            logger.error(f"Error loading slide content: {e}")
             self.set_default_content()
             
     def set_default_content(self):
@@ -133,60 +218,98 @@ class SlideWidget(QWidget):
         
         default_content = {
             1: "Schonmal ein automatisiert Shuttle gesehen, das aussieht wie eine Hummel?\n\nShuttle fährt los von Bushaltestelle an Bahnhof...",
-            2: "Wie die Hummel ihre Flügel nutzt, so nutzt unser BumbleB innovative Technologie...",
-            3: "Vielseitige Einsatzmöglichkeiten in urbanen Gebieten...",
-            4: "Moderne Sicherheitssysteme gewährleisten maximale Sicherheit...",
-            5: "Nachhaltiger Transport für eine grüne Zukunft..."
+            2: "Wie die Hummel ihre Flügel nutzt, so nutzt unser BumbleB innovative Technologie für autonomes Fahren.",
+            3: "Vielseitige Einsatzmöglichkeiten in urbanen Gebieten für nachhaltigen Transport.",
+            4: "Moderne Sicherheitssysteme gewährleisten maximale Sicherheit für alle Passagiere.",
+            5: "Nachhaltiger Transport für eine grüne Zukunft - umweltfreundlich und effizient."
         }
         
         title = default_titles.get(self.slide_id, f"Slide {self.slide_id}")
         content = default_content.get(self.slide_id, f"Content für Slide {self.slide_id}")
         
         if self.mode == 'creator':
-            self.title_edit.setText(title)
-            self.content_edit.setPlainText(content)
+            self.title_edit.delete('1.0', 'end')
+            self.title_edit.insert('1.0', title)
+            self.content_edit.delete('1.0', 'end')
+            self.content_edit.insert('1.0', content)
         else:
-            self.title_label.setText(title)
-            self.content_label.setText(content)
+            self.title_label.configure(text=title)
+            self.content_label.configure(state='normal')
+            self.content_label.delete('1.0', 'end')
+            self.content_label.insert('1.0', content)
+            self.content_label.configure(state='disabled')
             
-    def on_content_changed(self):
+    def on_content_changed(self, event=None):
         """Обробка змін контенту"""
         if self.mode == 'creator':
-            content_data = {
-                'title': self.title_edit.text(),
-                'content': self.content_edit.toPlainText(),
-                'timestamp': QDateTime.currentDateTime().toString()
-            }
-            
-            # Зберігаємо зміни
-            self.style_manager.save_slide_content(self.slide_id, content_data)
-            
-            # Сигналізуємо про зміни
-            self.content_changed.emit(content_data)
-            
+            try:
+                # Отримуємо оновлений контент
+                title_text = self.title_edit.get('1.0', 'end-1c')
+                content_text = self.content_edit.get('1.0', 'end-1c')
+                
+                # Зберігаємо зміни через content manager
+                from models.content import content_manager
+                content_manager.update_slide_content(
+                    self.slide_id,
+                    title_text,
+                    content_text
+                )
+                
+                # Викликаємо callbacks для оновлення інших компонентів
+                for callback in self.content_changed_callbacks:
+                    callback(self.slide_id, {
+                        'title': title_text,
+                        'content': content_text
+                    })
+                    
+                logger.debug(f"Slide {self.slide_id} content updated")
+                
+            except Exception as e:
+                logger.error(f"Error updating slide content: {e}")
+                
     def get_content_data(self):
         """Отримання даних контенту"""
         if self.mode == 'creator':
             return {
-                'title': self.title_edit.text(),
-                'content': self.content_edit.toPlainText()
+                'title': self.title_edit.get('1.0', 'end-1c'),
+                'content': self.content_edit.get('1.0', 'end-1c')
             }
         else:
             return {
-                'title': self.title_label.text(),
-                'content': self.content_label.text()
+                'title': self.title_label.cget('text'),
+                'content': self.content_label.get('1.0', 'end-1c') if hasattr(self.content_label, 'get') else ""
             }
             
     def update_content(self, content_data):
         """Оновлення контенту слайду"""
-        if 'title' in content_data:
-            if self.mode == 'creator':
-                self.title_edit.setText(content_data['title'])
-            else:
-                self.title_label.setText(content_data['title'])
-                
-        if 'content' in content_data:
-            if self.mode == 'creator':
-                self.content_edit.setPlainText(content_data['content'])
-            else:
-                self.content_label.setText(content_data['content'])
+        try:
+            if 'title' in content_data:
+                if self.mode == 'creator':
+                    self.title_edit.delete('1.0', 'end')
+                    self.title_edit.insert('1.0', content_data['title'])
+                else:
+                    self.title_label.configure(text=content_data['title'])
+                    
+            if 'content' in content_data:
+                if self.mode == 'creator':
+                    self.content_edit.delete('1.0', 'end')
+                    self.content_edit.insert('1.0', content_data['content'])
+                else:
+                    self.content_label.configure(state='normal')
+                    self.content_label.delete('1.0', 'end')
+                    self.content_label.insert('1.0', content_data['content'])
+                    self.content_label.configure(state='disabled')
+                    
+            logger.debug(f"Slide {self.slide_id} content updated externally")
+            
+        except Exception as e:
+            logger.error(f"Error updating slide content externally: {e}")
+    
+    def add_content_changed_callback(self, callback):
+        """Додає callback для сповіщення про зміни контенту"""
+        self.content_changed_callbacks.append(callback)
+    
+    def save_content(self):
+        """Примусове збереження контенту"""
+        if self.mode == 'creator':
+            self.on_content_changed()
