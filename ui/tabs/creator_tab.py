@@ -313,6 +313,266 @@ class CreatorTab:
             self.main_window.root.after_cancel(self.auto_save_timer_id)
         self.auto_save_timer_id = self.main_window.root.after(1000, self.auto_save_presentation)
 
+    # ЗАМІНИТИ МЕТОД save_current_slide_content в ui/tabs/creator_tab.py
+
+def save_current_slide_content(self):
+    """Зберігає контент поточного слайду в Creator з синхронізацією"""
+    try:
+        if not hasattr(self, 'current_slide') or not self.current_slide:
+            logger.warning("No current slide to save")
+            return
+        
+        # Збираємо всі текстові елементи з Canvas
+        title_text = ""
+        content_text = ""
+        
+        # Шукаємо Text widgets на Canvas
+        for item in self.slide_canvas.find_all():
+            if self.slide_canvas.type(item) == 'window':
+                try:
+                    widget = self.slide_canvas.nametowidget(self.slide_canvas.itemcget(item, 'window'))
+                    
+                    if isinstance(widget, tk.Text):
+                        text_content = widget.get('1.0', 'end-1c')
+                        
+                        # Визначити тип на основі font або положення
+                        font = widget.cget('font')
+                        if isinstance(font, tuple) and len(font) >= 2:
+                            font_size = font[1] if isinstance(font[1], int) else int(font[1])
+                            
+                            # Великий шрифт = заголовок
+                            if font_size >= 20 or 'bold' in str(font):
+                                if not title_text:  # Перший великий текст = заголовок
+                                    title_text = text_content
+                                else:
+                                    content_text += text_content + "\n"
+                            else:
+                                content_text += text_content + "\n"
+                        else:
+                            content_text += text_content + "\n"
+                            
+                except Exception as e:
+                    logger.debug(f"Could not process canvas widget: {e}")
+                    continue
+        
+        # Очистити зайві переноси рядків
+        content_text = content_text.strip()
+        
+        # Якщо не знайшли заголовок, використати перший рядок контенту
+        if not title_text and content_text:
+            lines = content_text.split('\n')
+            title_text = lines[0] if lines else f"Slide {self.current_edit_slide}"
+            content_text = '\n'.join(lines[1:]) if len(lines) > 1 else ""
+        
+        # Якщо все ще немає заголовка, використати за замовчуванням
+        if not title_text:
+            title_text = f"Demo-Folie {self.current_edit_slide}"
+        
+        # Зберегти через content_manager для синхронізації
+        from models.content import content_manager
+        success = content_manager.update_slide_content(
+            self.current_edit_slide,
+            title_text,
+            content_text
+        )
+        
+        if success:
+            # Показати успішне збереження в header
+            if hasattr(self, 'slide_info_label'):
+                original_text = self.slide_info_label.cget('text')
+                self.slide_info_label.configure(
+                    text=f"✅ Demo-Folie {self.current_edit_slide} gespeichert: {title_text[:30]}..."
+                )
+                
+                # Повернути оригінальний текст через 3 секунди
+                def restore_text():
+                    if hasattr(self, 'slide_info_label'):
+                        self.slide_info_label.configure(text=original_text)
+                
+                self.main_window.root.after(3000, restore_text)
+            
+            logger.info(f"Successfully saved slide {self.current_edit_slide}: {title_text[:30]}...")
+        else:
+            logger.error(f"Failed to save slide {self.current_edit_slide}")
+            
+        return success
+        
+    except Exception as e:
+        logger.error(f"Error saving current slide content: {e}")
+        return False
+
+# ДОДАТИ МЕТОД load_slide_to_editor - оновлена версія
+
+def load_slide_to_editor(self, slide_id):
+    """Завантажує Demo-Folie в редактор з правильною синхронізацією"""
+    try:
+        # Зберегти поточний слайд перед переключенням
+        if hasattr(self, 'current_edit_slide') and self.current_slide:
+            self.save_current_slide_content()
+        
+        # Завантажити новий слайд з content_manager
+        from models.content import content_manager
+        slide = content_manager.get_slide(slide_id)
+        
+        if slide:
+            self.current_edit_slide = slide_id
+            self.current_slide = slide
+            
+            # Очистити canvas
+            self.clear_slide_canvas()
+            
+            # Створити slide frame
+            self.add_slide_frame()
+            
+            # Додати контент як редагуємі widgets
+            self.add_editable_content_widgets(slide.title, slide.content)
+            
+            # Оновити UI
+            self.update_thumbnail_selection()
+            self.update_slide_counter()
+            
+            if hasattr(self, 'slide_info_label'):
+                self.slide_info_label.configure(
+                    text=f"Demo-Folie {slide_id}: {slide.title}"
+                )
+            
+            logger.debug(f"Loaded slide {slide_id} into editor: {slide.title}")
+            
+        else:
+            logger.warning(f"Slide {slide_id} not found")
+            
+    except Exception as e:
+        logger.error(f"Error loading slide to editor: {e}")
+
+# ДОДАТИ НОВИЙ МЕТОД add_editable_content_widgets
+
+def add_editable_content_widgets(self, title, content):
+    """Додає редагуємі widgets з контентом на canvas"""
+    try:
+        colors = theme_manager.get_colors()
+        fonts = self.main_window.fonts
+        
+        # Заголовок як редагуємий Text widget
+        if title:
+            title_widget = tk.Text(
+                self.slide_canvas,
+                width=60,
+                height=3,
+                font=(fonts['title'][0], 28, 'bold'),
+                bg='white',
+                fg='#1E88E5',
+                relief='flat',
+                bd=1,
+                wrap='word',
+                insertbackground='#1E88E5'
+            )
+            title_widget.insert('1.0', title)
+            
+            # Позиція на canvas
+            canvas_x = self.offset_x + (80 * self.scale_factor)
+            canvas_y = self.offset_y + (60 * self.scale_factor)
+            
+            canvas_item = self.slide_canvas.create_window(
+                canvas_x, canvas_y,
+                window=title_widget,
+                anchor='nw',
+                tags='slide_content'
+            )
+            self.make_canvas_item_movable(title_widget, canvas_item)
+        
+        # Контент як редагуємий Text widget
+        if content:
+            content_lines = content.split('\n')
+            clean_content = '\n'.join([line.strip() for line in content_lines if line.strip()])
+            
+            content_widget = tk.Text(
+                self.slide_canvas,
+                width=70,
+                height=min(20, max(8, len(content_lines) + 2)),
+                font=(fonts['body'][0], 16),
+                bg='white',
+                fg='#2C3E50',
+                relief='flat',
+                bd=1,
+                wrap='word',
+                insertbackground='#2C3E50'
+            )
+            content_widget.insert('1.0', clean_content)
+            
+            # Позиція на canvas
+            canvas_x = self.offset_x + (80 * self.scale_factor)
+            canvas_y = self.offset_y + (180 * self.scale_factor)
+            
+            canvas_item = self.slide_canvas.create_window(
+                canvas_x, canvas_y,
+                window=content_widget,
+                anchor='nw',
+                tags='slide_content'
+            )
+            self.make_canvas_item_movable(content_widget, canvas_item)
+        
+        # Додати branding
+        self.add_editable_branding_widget_on_slide()
+        
+        # Забезпечити правильний z-order
+        self.main_window.root.after(100, self.fix_creator_content_z_order)
+        
+    except Exception as e:
+        logger.error(f"Error adding editable content widgets: {e}")
+
+# ДОДАТИ МЕТОД clear_slide_canvas
+
+def clear_slide_canvas(self):
+    """Очищає canvas від всього контенту"""
+    try:
+        # Видалити всі елементи крім dropzone
+        all_items = self.slide_canvas.find_all()
+        for item in all_items:
+            tags = self.slide_canvas.gettags(item)
+            if 'dropzone' not in tags:
+                self.slide_canvas.delete(item)
+        
+        logger.debug("Canvas cleared")
+        
+    except Exception as e:
+        logger.error(f"Error clearing canvas: {e}")
+
+# ОНОВИТИ МЕТОД update_thumbnail_selection
+
+def update_thumbnail_selection(self):
+    """Оновлює виділення thumbnail в списку слайдів"""
+    try:
+        colors = theme_manager.get_colors()
+        
+        for slide_id, button in self.thumbnail_buttons.items():
+            if slide_id == self.current_edit_slide:
+                button.configure(
+                    bg=colors['accent_primary'],
+                    fg='white'
+                )
+            else:
+                button.configure(
+                    bg=colors['background_tertiary'],
+                    fg=colors['text_primary']
+                )
+        
+        logger.debug(f"Updated thumbnail selection for slide {self.current_edit_slide}")
+        
+    except Exception as e:
+        logger.error(f"Error updating thumbnail selection: {e}")
+
+# ОНОВИТИ МЕТОД update_slide_counter
+
+def update_slide_counter(self):
+    """Оновлює лічильник слайдів"""
+    try:
+        if hasattr(self, 'slide_counter'):
+            self.slide_counter.configure(
+                text=f"Demo-Folie {self.current_edit_slide} von {len(self.thumbnail_buttons)}"
+            )
+    except Exception as e:
+        logger.error(f"Error updating slide counter: {e}")
+
     def auto_save_presentation(self):
         """Автоматично зберігає презентацію щосекундно"""
         try:
